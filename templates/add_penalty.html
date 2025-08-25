@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Strafe hinzufügen - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-plus"></i> Neue Strafe hinzufügen</h5>
+            </div>
+            <form method="POST">
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="date" class="form-label">Datum *</label>
+                            <input type="date" class="form-control" id="date" name="date" 
+                                   value="{{ today }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="quantity" class="form-label">Anzahl</label>
+                            <input type="number" class="form-control" id="quantity" name="quantity" 
+                                   value="1" min="1" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="player_id" class="form-label">Spieler *</label>
+                        <select class="form-select" id="player_id" name="player_id" required>
+                            <option value="">Spieler auswählen...</option>
+                            {% for player in players %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="penalty_type_id" class="form-label">Vergehen *</label>
+                        <select class="form-select" id="penalty_type_id" name="penalty_type_id" required onchange="updateAmount()">
+                            <option value="">Vergehen auswählen...</option>
+                            {% for penalty_type in penalty_types %}
+                                <option value="{{ penalty_type.id }}" data-amount="{{ penalty_type.amount }}">
+                                    {{ penalty_type.name }} ({{ "%.2f"|format(penalty_type.amount) }}€)
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Vorschau Gesamtbetrag</label>
+                        <div class="alert alert-info">
+                            <i class="fas fa-calculator"></i> 
+                            <span id="amount-preview">Wählen Sie ein Vergehen aus</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Notizen (optional)</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Zusätzliche Informationen..."></textarea>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Strafe speichern
+                    </button>
+                    <a href="{{ url_for('penalties') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Abbrechen
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateAmount() {
+    const penaltySelect = document.getElementById('penalty_type_id');
+    const quantityInput = document.getElementById('quantity');
+    const preview = document.getElementById('amount-preview');
+    
+    const selectedOption = penaltySelect.options[penaltySelect.selectedIndex];
+    const amount = selectedOption.dataset.amount;
+    const quantity = parseInt(quantityInput.value) || 1;
+    
+    if (amount) {
+        const total = parseFloat(amount) * quantity;
+        preview.innerHTML = `${quantity}x ${parseFloat(amount).toFixed(2)}€ = <strong>${total.toFixed(2)}€</strong>`;
+    } else {
+        preview.innerHTML = 'Wählen Sie ein Vergehen aus';
+    }
+}
+
+// Update amount when quantity changes
+document.getElementById('quantity').addEventListener('input', updateAmount);
+</script>
+{% endblock %}

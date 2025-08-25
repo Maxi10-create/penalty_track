@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block title %}Strafen - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="fas fa-list"></i> Strafen verwalten</h1>
+    </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="player" class="form-label">Spieler filtern</label>
+                <select name="player" id="player" class="form-select">
+                    <option value="">Alle Spieler</option>
+                    {% for player in players %}
+                        <option value="{{ player.id }}" {% if filters.player == player.id|string %}selected{% endif %}>
+                            {{ player.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date_from" class="form-label">Von Datum</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" 
+                       value="{{ filters.date_from or '' }}">
+            </div>
+            <div class="col-md-3">
+                <label for="date_to" class="form-label">Bis Datum</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" 
+                       value="{{ filters.date_to or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Filtern
+                    </button>
+                    <a href="{{ url_for('penalties') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-times"></i> Zurücksetzen
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="row mb-3">
+    <div class="col-md-6">
+        <a href="{{ url_for('add_penalty') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Neue Strafe hinzufügen
+        </a>
+    </div>
+    <div class="col-md-6 text-end">
+        <a href="{{ url_for('export_csv') }}" class="btn btn-outline-primary">
+            <i class="fas fa-download"></i> CSV Export
+        </a>
+    </div>
+</div>
+
+<!-- Penalties Table -->
+<div class="card">
+    <div class="card-body">
+        {% if penalties %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Spieler</th>
+                            <th>Vergehen</th>
+                            <th>Anzahl</th>
+                            <th>Einzelbetrag</th>
+                            <th>Gesamtbetrag</th>
+                            <th>Notizen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for penalty in penalties %}
+                            <tr>
+                                <td>{{ penalty.date.strftime('%d.%m.%Y') }}</td>
+                                <td>
+                                    <strong>{{ penalty.player.name }}</strong>
+                                </td>
+                                <td>
+                                    {{ penalty.penalty_type.name }}
+                                    {% if penalty.penalty_type.description %}
+                                        <br><small class="text-muted">{{ penalty.penalty_type.description }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">{{ penalty.quantity }}</span>
+                                </td>
+                                <td>{{ "%.2f"|format(penalty.penalty_type.amount) }}€</td>
+                                <td>
+                                    <strong class="text-danger">{{ "%.2f"|format(penalty.total_amount) }}€</strong>
+                                </td>
+                                <td>
+                                    {% if penalty.notes %}
+                                        <small>{{ penalty.notes }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if pagination.pages > 1 %}
+                <nav aria-label="Pagination">
+                    <ul class="pagination justify-content-center">
+                        {% if pagination.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('penalties', page=pagination.prev_num, **filters) }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in pagination.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != pagination.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('penalties', page=page_num, **filters) }}">
+                                            {{ page_num }}
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if pagination.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('penalties', page=pagination.next_num, **filters) }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5>Keine Strafen gefunden</h5>
+                <p class="text-muted">
+                    {% if filters.player or filters.date_from or filters.date_to %}
+                        Keine Strafen für die gewählten Filter gefunden.
+                    {% else %}
+                        Noch keine Strafen erfasst.
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('add_penalty') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Erste Strafe hinzufügen
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

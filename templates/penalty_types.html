@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Vergehen verwalten - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="fas fa-tags"></i> Vergehen verwalten</h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Add Penalty Type Form -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-plus-circle"></i> Neues Vergehen hinzufügen</h5>
+            </div>
+            <form method="POST" action="{{ url_for('add_penalty_type') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Vergehen *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="Beschreibung des Vergehens" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Strafe (€) *</label>
+                        <input type="number" step="0.01" class="form-control" id="amount" name="amount" 
+                               placeholder="0.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Zusätzliche Beschreibung</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"
+                                  placeholder="Optional: Zusätzliche Informationen"></textarea>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Hinzufügen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Penalty Types List -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Vergehen-Katalog ({{ penalty_types|length }} Einträge)</h5>
+            </div>
+            <div class="card-body">
+                {% if penalty_types %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Vergehen</th>
+                                    <th>Strafe</th>
+                                    <th>Beschreibung</th>
+                                    <th>Verwendung</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for penalty_type in penalty_types %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ penalty_type.name }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{% if penalty_type.amount == 0 %}success{% elif penalty_type.amount < 10 %}primary{% elif penalty_type.amount < 50 %}warning{% else %}danger{% endif %}">
+                                                {{ "%.2f"|format(penalty_type.amount) }}€
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if penalty_type.description %}
+                                                <small>{{ penalty_type.description }}</small>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">
+                                                {{ penalty_type.penalty_entries|length }}x
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                        <h5>Keine Vergehen definiert</h5>
+                        <p class="text-muted">Fügen Sie das erste Vergehen hinzu.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

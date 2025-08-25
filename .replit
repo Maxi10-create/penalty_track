@@ -21,6 +21,10 @@ args = "Penalty Tracker Setup"
 task = "workflow.run"
 args = "penalty_tracker"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Web App"
+
 [[workflows.workflow]]
 name = "Penalty Tracker Setup"
 author = "agent"
@@ -39,3 +43,19 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export_csv.py"
+
+[[workflows.workflow]]
+name = "Web App"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app.py"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80

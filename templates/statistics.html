@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}Statistiken - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="fas fa-chart-bar"></i> Statistiken</h1>
+    </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="date_from" class="form-label">Von Datum</label>
+                <input type="date" name="date_from" id="date_from" class="form-control" 
+                       value="{{ date_from }}">
+            </div>
+            <div class="col-md-4">
+                <label for="date_to" class="form-label">Bis Datum</label>
+                <input type="date" name="date_to" id="date_to" class="form-control" 
+                       value="{{ date_to }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-sync"></i> Aktualisieren
+                </button>
+                <button type="button" class="btn btn-outline-secondary" onclick="setPresetRange('30')">30 Tage</button>
+                <button type="button" class="btn btn-outline-secondary" onclick="setPresetRange('90')">90 Tage</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-list-ol fa-2x mb-2"></i>
+                <h3>{{ total_count }}</h3>
+                <p class="mb-0">Gesamtstrafen</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-euro-sign fa-2x mb-2"></i>
+                <h3>{{ "%.2f"|format(total_amount) }}€</h3>
+                <p class="mb-0">Gesamtbetrag</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-calculator fa-2x mb-2"></i>
+                <h3>{{ "%.2f"|format(avg_per_penalty) }}€</h3>
+                <p class="mb-0">Ø pro Strafe</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-danger stat-card">
+            <div class="card-body text-center">
+                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                <h3>{{ "%.2f"|format(max_penalty) }}€</h3>
+                <p class="mb-0">Höchste Strafe</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Player Statistics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-users"></i> Spieler Statistiken</h5>
+            </div>
+            <div class="card-body">
+                {% if player_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Spieler</th>
+                                    <th class="text-center">Anzahl</th>
+                                    <th class="text-end">Betrag</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in player_stats[:10] %}
+                                    <tr>
+                                        <td>{{ stat.name }}</td>
+                                        <td class="text-center">
+                                            <span class="badge bg-primary">{{ stat.count }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>{{ "%.2f"|format(stat.total) }}€</strong>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Keine Daten für den gewählten Zeitraum.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Penalty Type Statistics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tags"></i> Vergehen Statistiken</h5>
+            </div>
+            <div class="card-body">
+                {% if penalty_stats %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Vergehen</th>
+                                    <th class="text-center">Anzahl</th>
+                                    <th class="text-end">Betrag</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in penalty_stats[:10] %}
+                                    <tr>
+                                        <td>
+                                            <small>{{ stat.name[:40] }}{% if stat.name|length > 40 %}...{% endif %}</small>
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge bg-warning">{{ stat.count }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>{{ "%.2f"|format(stat.total) }}€</strong>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">Keine Daten für den gewählten Zeitraum.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Strafen Verlauf</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="statisticsChart" height="80"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Set preset date ranges
+function setPresetRange(days) {
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - days);
+    
+    document.getElementById('date_from').value = pastDate.toISOString().split('T')[0];
+    document.getElementById('date_to').value = today.toISOString().split('T')[0];
+}
+
+// Load chart data for the current period
+const dateFrom = document.getElementById('date_from').value;
+const dateTo = document.getElementById('date_to').value;
+const daysDiff = Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24));
+
+fetch(`/api/penalty_chart_data?days=${daysDiff}`)
+    .then(response => response.json())
+    .then(data => {
+        const ctx = document.getElementById('statisticsChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.dates,
+                datasets: [{
+                    label: 'Strafen (€)',
+                    data: data.amounts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '€';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

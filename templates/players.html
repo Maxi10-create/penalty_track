@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Spieler verwalten - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4"><i class="fas fa-users"></i> Spieler verwalten</h1>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Add Player Form -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-user-plus"></i> Neuen Spieler hinzufügen</h5>
+            </div>
+            <form method="POST" action="{{ url_for('add_player') }}">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Spielername *</label>
+                        <input type="text" class="form-control" id="name" name="name" 
+                               placeholder="Vor- und Nachname" required>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Hinzufügen
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Players List -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Spielerliste ({{ players|length }} Spieler)</h5>
+            </div>
+            <div class="card-body">
+                {% if players %}
+                    <div class="row">
+                        {% for player in players %}
+                            <div class="col-md-6 mb-2">
+                                <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                                    <div>
+                                        <strong>{{ player.name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            {{ player.penalty_entries|length }} Strafen
+                                        </small>
+                                    </div>
+                                    <div>
+                                        <span class="badge bg-primary">
+                                            {% set total_amount = player.penalty_entries|sum(attribute='total_amount') %}
+                                            {{ "%.0f"|format(total_amount) }}€
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>Keine Spieler gefunden</h5>
+                        <p class="text-muted">Fügen Sie den ersten Spieler hinzu.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

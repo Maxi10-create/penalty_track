@@ -1,0 +1,249 @@
+**PROMPT FÜR REPLIT (Ghostwriter)**
+Erzeuge ein kleines Projekt mit **drei Dateien**:
+`requirements.txt`, `build_strafenlog.py`, `export_csv.py`.
+Das Projekt baut eine **übersichtliche Excel-Vorlage** für eine **einzige, chronologische Straf-Erfassung** mit **Dropdowns**, **Statistik & Diagrammen** – und bietet einen **CSV-Export** der Erfassung.
+
+---
+
+### 1) `requirements.txt`
+
+```
+openpyxl>=3.1
+```
+
+---
+
+### 2) `build_strafenlog.py`
+
+Schreibe **vollständigen Python-Code**, der ohne externe Ressourcen läuft und die Datei **`Strafenerfassung_ASV_Natz.xlsx`** erzeugt.
+
+#### Ziele & UX-Design
+
+* **Nur 1 Eingabeblatt**: „**Erfassung**“ (chronologisch, pro Zeile ein Eintrag).
+* **Dropdowns**: Spieler aus „Spielerliste“, Vergehen aus „Strafenkatalog“.
+* **Automatische Berechnung**: Einzelbetrag per XLOOKUP (Fallback VLOOKUP), Gesamt = Anzahl × Einzelbetrag.
+* **Gutes Layout / einfache Bedienung**:
+
+  * Einheitliche Kopfzeilen (fett, hellblau `FFDDEBF7`, dünner Rahmen), Zebra-Streifen via Tabellenstil, sinnvolle Spaltenbreiten, **Filter ein**, **Freeze-Panes**.
+  * **Eingabehilfen**: Anzahl = 1 vorbelegt; Datenvalidierung (Datum gültig; Anzahl ≥1).
+  * **Fehlermarker** (Conditional Formatting): Zellen rot hinterlegen, wenn **Datum, Spieler oder Vergehen** leer sind.
+* **Statistik**: steuerbarer Zeitraum & Spieler, übersichtliche KPIs, Top-Listen, **Zeitreihen-Diagramm**.
+* **Trainingsplan**: Referenzblatt (optional, rein informativ).
+* **Benannte Tabellen**: `tblErfassung`, `tblSpieler`, `tblKatalog`, `tblStatSpieler`, `tblStatVergehen`, `tblTrainingsplan`.
+
+#### Blätter & Inhalte
+
+##### A) Blatt **Erfassung** (einzige Eingabeseite)
+
+* Spalten (genau so):
+  `Datum | Spieler | Vergehen | Anzahl | Einzelbetrag (€) | Gesamt (€) | Notiz`
+* Lege **1 500** Datensätze an (Zeilen 2–1501) mit:
+
+  * **Datenprüfung**:
+
+    * Datum: gültig zwischen 01.01.2000 und 31.12.2100.
+    * Spieler: **Listendropdown** `=Spielerliste!$A$2:$A$200`.
+    * Vergehen: **Listendropdown** `=Strafenkatalog!$A$2:$A$400`.
+  * **Formeln**:
+
+    * `Anzahl` Standard = **1**.
+    * `Einzelbetrag (€)`:
+      `=IFERROR(XLOOKUP(C2,Strafenkatalog!$A$2:$A$400,Strafenkatalog!$B$2:$B$400),IFERROR(VLOOKUP(C2,Strafenkatalog!$A$2:$B$400,2,FALSE),0))`
+    * `Gesamt (€)`: `=IFERROR(D2*E2,0)`
+* Formate:
+
+  * Spaltenbreiten: `[13, 24, 36, 10, 18, 16, 28]`
+  * Währungsformat für **E\:F**: `#,##0.00 [$€-de-DE]`
+  * Tabelle `tblErfassung` (TableStyle **Medium 9**), **Filter an**, **Freeze** `A2`.
+* **Conditional Formatting**:
+
+  * Wenn `A: Datum` leer → gelb.
+  * Wenn `B: Spieler` oder `C: Vergehen` leer → rot.
+  * Wenn `F: Gesamt (€)` > 0 → dezent grün.
+
+##### B) Blatt **Spielerliste**
+
+* Spalte A mit Header **„Spieler“**, Bereich **A2\:A200** füllen mit der Mannschaft:
+
+  ```
+  Maximilian Hofer
+  Hannes Peintner
+  Alex Braunhofer
+  Alex Schraffel
+  Andreas Fusco
+  Armin Feretti
+  Hannes Larcher
+  Julian Brunner
+  Leo Tauber
+  Lukas Mayr
+  Manuel Troger
+  Martin Gasser
+  Matthias Schmid
+  Maximilian Schraffl
+  Michael Mitterrutzner
+  Michael Peintner
+  Patrick Auer
+  Patrick Pietersteiner
+  Stefan Filo
+  Stefan Peintner
+  Manuel Auer
+  Mauro Monti
+  Tobias
+  Jakob Unterholzner
+  Fabian Bacher
+  Emil Gabrieli
+  Mardochee
+  Oleg Schleiermann
+  ```
+* Tabelle `tblSpieler` (TableStyle **Medium 2**), Spaltenbreite **26**.
+
+##### C) Blatt **Strafenkatalog**
+
+* Spalten: `Vergehen | Strafe (€) pro Einheit | Beschreibung (optional)`
+* Trage die Werte (aus den Screenshots) ein – **Schreibweise beibehalten**; Beschreibung nur wo angegeben:
+
+  ```
+  Unentschuldigtes Fehlen im Trainingslager,50,
+  Bier bei Essen Trainingslager,10,
+  Busfahrer pflanzen,5,
+  Alpha Aktion,5,
+  Ball in Q5,2,
+  Socken ohschneiden,20,
+  Valentinstog fahln,50,
+  Abschlussmatch verloren,2,
+  Fehlen beim Spiel wegen Urlaub,30,
+  Abwesenheit Urlaub während Meisterschaft,10,
+  Unentschuldigtes Fehlen Spiel,50,
+  Unentschieden Meisterschaftsspiel,1,
+  Niederlage Meisterschaftsspiel,2,
+  Spiel Socken ohschneiden,20,
+  Elfer verursachen,10,
+  Unentschuldigtes Fehlen beim Training,20,
+  100%ige Chance liegen lossen,5,
+  Falscher Einwurf,5,
+  Elfer verschiaßn,10,
+  Tormonn Papelle kregn,5,
+  Freitig glei nochn Training gian,2,
+  Schuache in Kabine ohklopfn,5,
+  Kistenplan net einholten /pro Kopf,30,
+  Übung bei training vertschecken,1,
+  Torello 20 Pässe,2,
+  Übern tennisplotz mit FB schuach gian,5,
+  Nochn training gian ohne eps zu verraumen,5,
+  Gelbsperre/Rotsperre pro Spiel,15,
+  Kabinendienst vernachlässigt,10,
+  Freitags Abschluss-Spiel verloren,2,
+  Abwesenheit Urlaub in Vorbereitung,5,
+  Glei nochn Hoamspiel gian(min 30 min.),10,
+  Saufn vorn Spiel,50,
+  Unsportliches Verhalten gegenüber Mitspieler/Trai,50,
+  Erstes Tor/Startelfeinsatz,0,Kasten (ansonsten 20€)
+  Eigentor,0,Kasten (ansonsten 20€)
+  Foto in Zeitung/Online,2,
+  Sachen in Kabine/Platz vergessen,5,
+  Unentschuldigtes fehlen beim Training ohne Absage,15,
+  Rauchen im Trikot,15,
+  Bei Spiel folscher Trainer,20,
+  Folsches Trainingsgewond,5,
+  Handy leitn in do kabine,5,
+  Schiffn in do Dusche,20,
+  Oan setzn in do Kabine (wenns stinkt 20€),5,
+  Frau/freindin fa an Mitspieler verraumen,500,
+  Geburtstogsessen net innerholb 1 Monat gebrocht,150,
+  Rote Karte wegn Unsportlichkeit,50,
+  Gelbe Karte wegn Unsportlichkeit,20,
+  Zu spät - Pauschale,5,
+  ```
+* Tabelle `tblKatalog` (Medium 2), plus **200** leere Reservelzeilen.
+
+##### D) Blatt **Statistik**
+
+**Steuerung (oben links)**
+
+* `A2`: **Zeitraum Start** → `B2 =DATE(YEAR(TODAY()),MONTH(TODAY()),1)`
+* `C2`: **Zeitraum Ende** → `D2 =TODAY()`
+* `A4`: **Spieler (Auswahl)** → `B4` Datenprüfung Liste `=Spielerliste!$A$2:$A$200`
+* Spaltenbreiten A\:D = `36,16,20,16`, Köpfe fett/hellblau.
+
+**KPIs (A6–B9)**
+
+* `Gesamtbetrag (Zeitraum)` → `=IFERROR(SUMIFS(tblErfassung[Gesamt (€)],tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2),0)`
+* `Anzahl Einträge (Zeitraum)` → `=IFERROR(COUNTIFS(tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2),0)`
+* `Ø Betrag pro Eintrag` → `=IF(B7=0,0,B6/B7)`
+* `Höchste Einzelstrafe` → `=IFERROR(AGGREGATE(14,6,tblErfassung[Gesamt (€)]/(tblErfassung[Datum]>=$B$2)/(tblErfassung[Datum]<=$D$2),1),0)`
+* Währungsformat für B6,B8,B9.
+
+**Summe nach Spieler (Zeitraum)** – Tabelle `tblStatSpieler`
+
+* Kopf ab A11: **Spieler | Summe (€) | Anzahl | Ø (€)**
+* Namen aus `Spielerliste!A2:A200` spiegeln (A12…); Formeln:
+
+  * `B12`: `=IF(A12="";0;IFERROR(SUMIFS(tblErfassung[Gesamt (€)],tblErfassung[Spieler],A12,tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2);0))`
+  * `C12`: `=IF(A12="";0;IFERROR(COUNTIFS(tblErfassung[Spieler],A12,tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2);0))`
+  * `D12`: `=IF(C12=0;0;B12/C12)`
+
+**Summe nach Vergehen (Zeitraum)** – Tabelle `tblStatVergehen`
+
+* Kopf ab F11: **Vergehen | Summe (€) | Anzahl | Ø (€)**
+* Vergehen aus `Strafenkatalog!A2:A400` spiegeln (F12…); Formeln analog:
+
+  * `G12`: `=IF(F12="";0;IFERROR(SUMIFS(tblErfassung[Gesamt (€)],tblErfassung[Vergehen],F12,tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2);0))`
+  * `H12`: `=IF(F12="";0;IFERROR(COUNTIFS(tblErfassung[Vergehen],F12,tblErfassung[Datum],">="&$B$2,tblErfassung[Datum],"<="&$D$2);0))`
+  * `I12`: `=IF(H12=0;0;G12/H12)`
+
+**Zeitreihe – Strafen über Zeit (gewählter Spieler)**
+
+* `A25`: Titel, `F24`: **Tage anzeigen** = **90**
+* Datumsserie ab `A26`: `=IF(ROW()-ROW($A$26)+1<=$F$24,$B$2+ROW()-ROW($A$26),"")`
+* Beträge ab `B26`: `=IF(A26="";"";IFERROR(SUMIFS(tblErfassung[Gesamt (€)],tblErfassung[Spieler],$B$4,tblErfassung[Datum],A26);0))`
+* Erzeuge ein **Linien-Diagramm** (openpyxl.chart LineChart) mit X=`A26:A115`, Y=`B26:B115`, Titel **„Strafen über Zeit – Spieler“**, Größe ca. 26×12 Zellen, Position „A36“.
+
+**Monatsmatrix (12 Monate ab Start)**
+
+* Kopf **„Monatsmatrix (Summe €)“** ab `A65`.
+
+* `A66:A…` Spielernamen; `B65:M65` Monate:
+
+  * `B65`: `=EOMONTH($B$2,0)`; rechts: `=EOMONTH(B65,1)` (Format `MMM JJJJ`)
+
+* Zellen `B66:M…`:
+  `=IF($A66="";0;IFERROR(SUMIFS(tblErfassung[Gesamt (€)],tblErfassung[Spieler],$A66,tblErfassung[Datum],">="&EOMONTH(B$65,-1)+1,tblErfassung[Datum],"<="&EOMONTH(B$65,0));0))`
+
+* Optionales **Säulen-Diagramm** (ClusteredColumn) aus der Summenzeile für den in B4 gewählten Spieler.
+
+* **Freeze-Panes** in Statistik bei `A12`. Tabellenstile Medium 2/7. Währungsformate in Summenspalten.
+
+##### E) Blatt **Trainingsplan** (optional, Referenz)
+
+* Spalten: `Datum | Tag | Uhrzeit | Einheit | Schuhe`
+* Trage die Vorbereitungstermine **(Liste hier belassen; einfache Beispieldaten sind ok)** ein und formatiere sie als Tabelle `tblTrainingsplan` (Light 9).
+
+##### F) „Info“-Leiste
+
+* Erzeuge oben im Blatt **Erfassung** (z. B. Zeile 1, rechts) einen kurzen Hinweis:
+  „Datum, Spieler & Vergehen wählen – Rest füllt sich automatisch. Filter nutzen, um Zeitraum/Spieler zu filtern.“
+
+##### G) Datei speichern
+
+* Schreibe die Arbeitsmappe als **`Strafenerfassung_ASV_Natz.xlsx`** ins Projektverzeichnis und drucke eine kurze Erfolgsmeldung in die Konsole.
+
+---
+
+### 3) `export_csv.py`
+
+Schreibe **vollständigen Python-Code**, der `Strafenerfassung_ASV_Natz.xlsx` einliest, die Tabelle **`tblErfassung`** findet und als **`Erfassung_Export.csv`** (UTF-8, Semikolon-getrennt) exportiert.
+
+* Exportiere nur **gefüllte Zeilen** (Datum ODER Spieler ODER Vergehen belegt).
+* Spaltenreihenfolge wie im Excel-Blatt „Erfassung“.
+* Datumsformat im CSV: `YYYY-MM-DD`.
+* Zahlenformat: Dezimalpunkt (CSV-Standard), **kein** Währungssymbol.
+
+---
+
+### Akzeptanzkriterien (Ghostwriter beachten!)
+
+* Excel enthält **nur eine Eingabeseite** „Erfassung“ + Hilfsblätter „Spielerliste“, „Strafenkatalog“, „Statistik“, „Trainingsplan“.
+* Dropdowns funktionieren, **Gesamt** berechnet korrekt, Tabellen sind formatiert, **Filter** und **Freeze-Panes** aktiv.
+* Statistik zeigt **KPIs**, **Summe je Spieler/Vergehen**, **Zeitreihe** (90 Tage) und **Monatsmatrix**.
+* `export_csv.py` erzeugt **Erfassung\_Export.csv** inkl. nur befüllter Einträge.
+* Code ist komplett, gut strukturiert und sofort lauffähig.

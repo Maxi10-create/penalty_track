@@ -23,8 +23,8 @@ db = SQLAlchemy(app)
 
 # Access codes for different roles
 ACCESS_CODES = {
-    'spieler': '1969',  # Standard access for players (view only)
     'kassier': '1970'   # Admin access for treasurer (full access)
+    # Spieler access requires no code
 }
 
 # Decorator for role-based access control
@@ -167,15 +167,24 @@ def login():
     """Login page with role-based access"""
     if request.method == 'POST':
         access_type = request.form.get('access_type')
-        access_code = request.form.get('access_code')
+        access_code = request.form.get('access_code', '')
         
-        if access_type in ACCESS_CODES and ACCESS_CODES[access_type] == access_code:
+        # Spieler access without code
+        if access_type == 'spieler':
             session['user_role'] = access_type
-            session['access_code'] = access_code
-            flash(f'Erfolgreich als {access_type.title()} angemeldet!', 'success')
+            flash('Erfolgreich als Spieler angemeldet!', 'success')
             return redirect(url_for('index'))
+        
+        # Kassier access with code validation
+        elif access_type == 'kassier':
+            if access_code == ACCESS_CODES['kassier']:
+                session['user_role'] = access_type
+                flash('Erfolgreich als Kassier angemeldet!', 'success')
+                return redirect(url_for('index'))
+            else:
+                flash('Ungültiger Zugangscode für Kassier!', 'error')
         else:
-            flash('Ungültiger Zugangscode!', 'error')
+            flash('Ungültige Zugangsart!', 'error')
     
     return render_template('login.html')
 

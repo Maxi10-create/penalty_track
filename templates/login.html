@@ -28,16 +28,10 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label for="access_code" class="form-label">Zugangscode</label>
+                    <div class="mb-3" id="code-section" style="display: none;">
+                        <label for="access_code" class="form-label">Zugangscode für Kassier</label>
                         <input type="password" class="form-control" id="access_code" name="access_code" 
-                               placeholder="Code eingeben" required autocomplete="current-password">
-                        <div class="form-text">
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle"></i> 
-                                Spieler: Code 1969 | Kassier: Code 1970
-                            </small>
-                        </div>
+                               placeholder="Code eingeben" autocomplete="current-password">
                     </div>
 
                     <div class="d-grid">
@@ -57,16 +51,30 @@
 </div>
 
 <script>
-// Auto-fill code based on selected access type
+// Show/hide code input based on selected access type
 document.querySelectorAll('input[name="access_type"]').forEach(radio => {
     radio.addEventListener('change', function() {
+        const codeSection = document.getElementById('code-section');
         const codeInput = document.getElementById('access_code');
-        if (this.value === 'spieler') {
-            codeInput.placeholder = 'Code für Spieler eingeben';
-        } else if (this.value === 'kassier') {
-            codeInput.placeholder = 'Code für Kassier eingeben';
+        
+        if (this.value === 'kassier') {
+            codeSection.style.display = 'block';
+            codeInput.required = true;
+        } else {
+            codeSection.style.display = 'none';
+            codeInput.required = false;
+            codeInput.value = '';
         }
     });
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedRadio = document.querySelector('input[name="access_type"]:checked');
+    if (selectedRadio && selectedRadio.value === 'kassier') {
+        document.getElementById('code-section').style.display = 'block';
+        document.getElementById('access_code').required = true;
+    }
 });
 </script>
 {% endblock %}

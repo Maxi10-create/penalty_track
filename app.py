@@ -255,7 +255,7 @@ def statistics():
     # KPIs
     total_count = base_query.count()
     total_amount = db.session.query(db.func.sum(PenaltyType.amount * Penalty.quantity))\
-        .join(Penalty).filter(
+        .select_from(Penalty).join(PenaltyType).filter(
             Penalty.date >= date_from_obj,
             Penalty.date <= date_to_obj
         ).scalar() or 0
@@ -263,7 +263,7 @@ def statistics():
     avg_per_penalty = total_amount / total_count if total_count > 0 else 0
     
     max_penalty = db.session.query(db.func.max(PenaltyType.amount * Penalty.quantity))\
-        .join(Penalty).filter(
+        .select_from(Penalty).join(PenaltyType).filter(
             Penalty.date >= date_from_obj,
             Penalty.date <= date_to_obj
         ).scalar() or 0
@@ -273,7 +273,7 @@ def statistics():
         Player.name,
         db.func.count(Penalty.id).label('count'),
         db.func.sum(PenaltyType.amount * Penalty.quantity).label('total')
-    ).join(Penalty).join(PenaltyType)\
+    ).select_from(Player).join(Penalty).join(PenaltyType)\
      .filter(Penalty.date >= date_from_obj, Penalty.date <= date_to_obj)\
      .group_by(Player.id, Player.name)\
      .order_by(db.func.sum(PenaltyType.amount * Penalty.quantity).desc())\
@@ -284,7 +284,7 @@ def statistics():
         PenaltyType.name,
         db.func.count(Penalty.id).label('count'),
         db.func.sum(PenaltyType.amount * Penalty.quantity).label('total')
-    ).join(Penalty)\
+    ).select_from(PenaltyType).join(Penalty)\
      .filter(Penalty.date >= date_from_obj, Penalty.date <= date_to_obj)\
      .group_by(PenaltyType.id, PenaltyType.name)\
      .order_by(db.func.sum(PenaltyType.amount * Penalty.quantity).desc())\

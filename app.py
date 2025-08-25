@@ -5,13 +5,14 @@ ASV Natz Penalty Tracking Web Application
 Flask-based web interface for penalty management
 """
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, send_file, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
 import json
 import csv
 import io
 import os
+from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'asv-natz-penalty-tracker-2025'
@@ -19,6 +20,38 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///penalty_tracker.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+
+# Access codes for different roles
+ACCESS_CODES = {
+    'spieler': '1969',  # Standard access for players (view only)
+    'kassier': '1970'   # Admin access for treasurer (full access)
+}
+
+# Decorator for role-based access control
+def require_role(role):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_role' not in session:
+                flash('Bitte loggen Sie sich ein.', 'warning')
+                return redirect(url_for('login'))
+            if role != 'any' and session['user_role'] != role:
+                flash('Keine Berechtigung für diese Aktion.', 'error')
+                return redirect(url_for('index'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
+def require_login():
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_role' not in session:
+                flash('Bitte loggen Sie sich ein.', 'warning')
+                return redirect(url_for('login'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 # Database Models
 class Player(db.Model):
@@ -129,7 +162,32 @@ def init_database():
     db.session.commit()
 
 # Routes
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login page with role-based access"""
+    if request.method == 'POST':
+        access_type = request.form.get('access_type')
+        access_code = request.form.get('access_code')
+        
+        if access_type in ACCESS_CODES and ACCESS_CODES[access_type] == access_code:
+            session['user_role'] = access_type
+            session['access_code'] = access_code
+            flash(f'Erfolgreich als {access_type.title()} angemeldet!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Ungültiger Zugangscode!', 'error')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout and clear session"""
+    session.clear()
+    flash('Sie wurden erfolgreich abgemeldet.', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@require_login()
 def index():
     """Main dashboard with overview"""
     total_penalties = Penalty.query.count()
@@ -184,6 +242,7 @@ def index():
                          cumulative_data=cumulative_data)
 
 @app.route('/add_penalty', methods=['GET', 'POST'])
+@require_role('kassier')
 def add_penalty():
     """Add new penalty"""
     if request.method == 'POST':
@@ -220,6 +279,7 @@ def add_penalty():
                          today=date.today())
 
 @app.route('/penalties')
+@require_login()
 def penalties():
     """List all penalties with filtering and player totals"""
     page = request.args.get('page', 1, type=int)
@@ -272,6 +332,7 @@ def penalties():
                          })
 
 @app.route('/statistics')
+@require_login()
 def statistics():
     """Statistics dashboard"""
     # Date range for analysis
@@ -363,12 +424,14 @@ def statistics():
                          cumulative_data=cumulative_data)
 
 @app.route('/players')
+@require_role('kassier')
 def players():
     """Manage players"""
     players = Player.query.order_by(Player.name).all()
     return render_template('players.html', players=players)
 
 @app.route('/add_player', methods=['POST'])
+@require_role('kassier')
 def add_player():
     """Add new player"""
     name = request.form.get('name', '').strip()
@@ -386,12 +449,14 @@ def add_player():
     return redirect(url_for('players'))
 
 @app.route('/penalty_types')
+@require_role('kassier')
 def penalty_types():
     """Manage penalty types"""
     penalty_types = PenaltyType.query.order_by(PenaltyType.name).all()
     return render_template('penalty_types.html', penalty_types=penalty_types)
 
 @app.route('/add_penalty_type', methods=['POST'])
+@require_role('kassier')
 def add_penalty_type():
     """Add new penalty type"""
     try:
@@ -415,6 +480,7 @@ def add_penalty_type():
     return redirect(url_for('penalty_types'))
 
 @app.route('/export_csv')
+@require_role('kassier')
 def export_csv():
     """Export penalties to CSV"""
     output = io.StringIO()

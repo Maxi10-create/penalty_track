@@ -24,11 +24,13 @@
                             <i class="fas fa-tachometer-alt"></i> Dashboard
                         </a>
                     </li>
+                    {% if session.user_role == 'kassier' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('add_penalty') }}">
                             <i class="fas fa-plus"></i> Strafe hinzufügen
                         </a>
                     </li>
+                    {% endif %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('penalties') }}">
                             <i class="fas fa-list"></i> Strafen
@@ -39,6 +41,7 @@
                             <i class="fas fa-chart-bar"></i> Statistiken
                         </a>
                     </li>
+                    {% if session.user_role == 'kassier' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-cogs"></i> Verwaltung
@@ -52,12 +55,25 @@
                             </a></li>
                         </ul>
                     </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav">
+                    {% if session.user_role == 'kassier' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('export_csv') }}">
                             <i class="fas fa-download"></i> CSV Export
                         </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{ session.user_role.title() if session.user_role else 'Benutzer' }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt"></i> Abmelden
+                            </a></li>
+                        </ul>
                     </li>
                 </ul>
             </div>

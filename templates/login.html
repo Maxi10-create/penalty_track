@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Anmeldung - ASV Natz Penalty Tracker{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><i class="fas fa-key"></i> ASV Natz Penalty Tracker</h4>
+                <p class="mb-0 text-muted">Bitte wählen Sie Ihren Zugang</p>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    <div class="mb-4">
+                        <label class="form-label">Zugangsart wählen:</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="access_type" id="spieler" value="spieler" checked>
+                            <label class="form-check-label" for="spieler">
+                                <strong>Spieler</strong> - Anzeige der Strafen und Statistiken
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="access_type" id="kassier" value="kassier">
+                            <label class="form-check-label" for="kassier">
+                                <strong>Kassier</strong> - Vollzugriff (Strafen hinzufügen/verwalten)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="access_code" class="form-label">Zugangscode</label>
+                        <input type="password" class="form-control" id="access_code" name="access_code" 
+                               placeholder="Code eingeben" required autocomplete="current-password">
+                        <div class="form-text">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Spieler: Code 1969 | Kassier: Code 1970
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Anmelden
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <small class="text-muted">
+                    <i class="fas fa-futbol"></i> ASV Natz e.V. | Penalty Tracking System
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-fill code based on selected access type
+document.querySelectorAll('input[name="access_type"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const codeInput = document.getElementById('access_code');
+        if (this.value === 'spieler') {
+            codeInput.placeholder = 'Code für Spieler eingeben';
+        } else if (this.value === 'kassier') {
+            codeInput.placeholder = 'Code für Kassier eingeben';
+        }
+    });
+});
+</script>
+{% endblock %}

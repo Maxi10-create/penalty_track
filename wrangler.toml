@@ -1,0 +1,17 @@
+name = "asv-natz-penalty-tracker"
+main = "src/index.js"
+compatibility_date = "2024-08-25"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "asv-natz-penalties"
+database_id = "your-database-id-will-be-generated"
+
+[vars]
+ENVIRONMENT = "development"
+
+# Static files for UI
+[[rules]]
+type = "Text"
+globs = ["**/*.html", "**/*.css", "**/*.js"]
+fallthrough = true

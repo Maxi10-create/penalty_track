@@ -1,2 +1,41 @@
+modules = ["python-3.11"]
 [agent]
 expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Penalty Tracker Setup"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "penalty_tracker"
+
+[[workflows.workflow]]
+name = "Penalty Tracker Setup"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export_csv.py"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "penalty_tracker"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export_csv.py"

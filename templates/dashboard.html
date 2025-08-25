@@ -61,13 +61,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Aktionen</h6>
-                        <a href="{{ url_for('add_penalty') }}" class="btn btn-light btn-sm">
-                            <i class="fas fa-plus"></i> Neue Strafe
-                        </a>
+                        <h6 class="card-title">Heute</h6>
+                        <h3 class="mb-0">{{ today_penalties }}</h3>
+                        <small>Strafen heute</small>
                     </div>
                     <div class="align-self-center">
-                        <i class="fas fa-plus fa-2x"></i>
+                        <i class="fas fa-calendar-day fa-2x"></i>
                     </div>
                 </div>
             </div>
@@ -140,29 +139,42 @@
     </div>
 </div>
 
-<!-- Chart -->
-<div class="row mt-4">
+<!-- Quick Actions -->
+{% if session.user_role == 'kassier' %}
+<div class="row mt-4 mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <h5><i class="fas fa-chart-line"></i> Strafen der letzten 30 Tage</h5>
-            </div>
-            <div class="card-body">
-                <canvas id="penaltyChart" height="100"></canvas>
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h5 class="card-title"><i class="fas fa-tools"></i> Schnellzugriff</h5>
+                <div class="btn-group" role="group">
+                    <a href="{{ url_for('add_penalty') }}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Strafe hinzufügen
+                    </a>
+                    <a href="{{ url_for('players') }}" class="btn btn-primary">
+                        <i class="fas fa-users"></i> Spieler verwalten
+                    </a>
+                    <a href="{{ url_for('penalty_types') }}" class="btn btn-warning">
+                        <i class="fas fa-tags"></i> Vergehen verwalten
+                    </a>
+                    <a href="{{ url_for('export_csv') }}" class="btn btn-info">
+                        <i class="fas fa-download"></i> CSV Export
+                    </a>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endif %}
 
-<!-- Dashboard Charts -->
-<div class="row">
+<!-- Charts -->
+<div class="row mt-4">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
                 <h5><i class="fas fa-chart-bar"></i> Tägliche Strafen (30 Tage)</h5>
             </div>
             <div class="card-body">
-                <canvas id="dailyChart" height="120"></canvas>
+                <canvas id="dailyChart" height="150"></canvas>
             </div>
         </div>
     </div>
@@ -172,7 +184,7 @@
                 <h5><i class="fas fa-chart-line"></i> Kumulierte Strafen über Zeit</h5>
             </div>
             <div class="card-body">
-                <canvas id="cumulativeChart" height="120"></canvas>
+                <canvas id="cumulativeChart" height="150"></canvas>
             </div>
         </div>
     </div>

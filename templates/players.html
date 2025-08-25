@@ -43,8 +43,8 @@
                 {% if players %}
                     <div class="row">
                         {% for player in players %}
-                            <div class="col-md-6 mb-2">
-                                <div class="d-flex justify-content-between align-items-center p-2 border rounded">
+                            <div class="col-md-12 mb-2">
+                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
                                     <div>
                                         <strong>{{ player.name }}</strong>
                                         <br>
@@ -52,11 +52,19 @@
                                             {{ player.penalty_entries|length }} Strafen
                                         </small>
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-items-center gap-2">
                                         <span class="badge bg-primary">
                                             {% set total_amount = player.penalty_entries|sum(attribute='total_amount') %}
                                             {{ "%.0f"|format(total_amount) }}€
                                         </span>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="editPlayer({{ player.id }}, '{{ player.name }}')">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deletePlayer({{ player.id }}, '{{ player.name }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -73,4 +81,69 @@
         </div>
     </div>
 </div>
+
+<!-- Edit Player Modal -->
+<div class="modal fade" id="editPlayerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Spieler bearbeiten</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('edit_player') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_player_id" name="player_id">
+                    <div class="mb-3">
+                        <label for="edit_player_name" class="form-label">Spielername</label>
+                        <input type="text" class="form-control" id="edit_player_name" name="name" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Player Modal -->
+<div class="modal fade" id="deletePlayerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Spieler löschen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('delete_player') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="delete_player_id" name="player_id">
+                    <p>Sind Sie sicher, dass Sie den Spieler <strong id="delete_player_name"></strong> löschen möchten?</p>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Achtung:</strong> Alle zugehörigen Strafen werden ebenfalls gelöscht!
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-danger">Löschen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editPlayer(id, name) {
+    document.getElementById('edit_player_id').value = id;
+    document.getElementById('edit_player_name').value = name;
+    new bootstrap.Modal(document.getElementById('editPlayerModal')).show();
+}
+
+function deletePlayer(id, name) {
+    document.getElementById('delete_player_id').value = id;
+    document.getElementById('delete_player_name').textContent = name;
+    new bootstrap.Modal(document.getElementById('deletePlayerModal')).show();
+}
+</script>
 {% endblock %}

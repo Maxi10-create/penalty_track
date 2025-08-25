@@ -243,12 +243,17 @@ def index():
             'cumulative_amount': running_total
         })
     
+    # Today's penalties count
+    today = date.today()
+    today_penalties = Penalty.query.filter(Penalty.date == today).count()
+    
     return render_template('dashboard.html', 
                          total_penalties=total_penalties,
                          total_amount=total_amount,
                          recent_penalties=recent_penalties,
                          top_players=top_players,
-                         cumulative_data=cumulative_data)
+                         cumulative_data=cumulative_data,
+                         today_penalties=today_penalties)
 
 @app.route('/add_penalty', methods=['GET', 'POST'])
 @require_role('kassier')
@@ -314,6 +319,7 @@ def penalties():
         .paginate(page=page, per_page=20, error_out=False)
     
     players = Player.query.order_by(Player.name).all()
+    penalty_types = PenaltyType.query.order_by(PenaltyType.name).all()
     
     # Calculate player totals (all-time)
     player_totals = db.session.query(
@@ -333,6 +339,7 @@ def penalties():
                          penalties=penalties_pagination.items,
                          pagination=penalties_pagination,
                          players=players,
+                         penalty_types=penalty_types,
                          player_totals=player_totals_dict,
                          filters={
                              'player': player_filter,
@@ -457,6 +464,52 @@ def add_player():
     
     return redirect(url_for('players'))
 
+@app.route('/edit_player', methods=['POST'])
+@require_role('kassier')
+def edit_player():
+    """Edit existing player"""
+    player_id = request.form.get('player_id')
+    name = request.form.get('name', '').strip()
+    
+    if not player_id or not name:
+        flash('Spieler-ID und Name sind erforderlich!', 'error')
+        return redirect(url_for('players'))
+    
+    player = Player.query.get_or_404(player_id)
+    
+    # Check if another player with this name exists
+    existing = Player.query.filter(Player.name == name, Player.id != player_id).first()
+    if existing:
+        flash('Ein Spieler mit diesem Namen existiert bereits!', 'error')
+        return redirect(url_for('players'))
+    
+    player.name = name
+    db.session.commit()
+    flash('Spieler erfolgreich bearbeitet!', 'success')
+    return redirect(url_for('players'))
+
+@app.route('/delete_player', methods=['POST'])
+@require_role('kassier')
+def delete_player():
+    """Delete player and all associated penalties"""
+    player_id = request.form.get('player_id')
+    
+    if not player_id:
+        flash('Spieler-ID ist erforderlich!', 'error')
+        return redirect(url_for('players'))
+    
+    player = Player.query.get_or_404(player_id)
+    
+    # Delete all penalties for this player first
+    Penalty.query.filter_by(player_id=player_id).delete()
+    
+    # Delete the player
+    db.session.delete(player)
+    db.session.commit()
+    
+    flash(f'Spieler "{player.name}" und alle zugehörigen Strafen wurden gelöscht!', 'success')
+    return redirect(url_for('players'))
+
 @app.route('/penalty_types')
 @require_role('kassier')
 def penalty_types():
@@ -487,6 +540,50 @@ def add_penalty_type():
         flash('Ungültiger Betrag!', 'error')
     
     return redirect(url_for('penalty_types'))
+
+@app.route('/edit_penalty', methods=['POST'])
+@require_role('kassier')
+def edit_penalty():
+    """Edit existing penalty"""
+    penalty_id = request.form.get('penalty_id')
+    
+    if not penalty_id:
+        flash('Strafen-ID ist erforderlich!', 'error')
+        return redirect(url_for('penalties'))
+    
+    penalty = Penalty.query.get_or_404(penalty_id)
+    
+    try:
+        penalty.date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+        penalty.player_id = int(request.form['player_id'])
+        penalty.penalty_type_id = int(request.form['penalty_type_id'])
+        penalty.quantity = int(request.form.get('quantity', 1))
+        penalty.notes = request.form.get('notes', '')
+        
+        db.session.commit()
+        flash('Strafe erfolgreich bearbeitet!', 'success')
+        
+    except Exception as e:
+        flash(f'Fehler beim Bearbeiten der Strafe: {str(e)}', 'error')
+    
+    return redirect(url_for('penalties'))
+
+@app.route('/delete_penalty', methods=['POST'])
+@require_role('kassier')
+def delete_penalty():
+    """Delete penalty"""
+    penalty_id = request.form.get('penalty_id')
+    
+    if not penalty_id:
+        flash('Strafen-ID ist erforderlich!', 'error')
+        return redirect(url_for('penalties'))
+    
+    penalty = Penalty.query.get_or_404(penalty_id)
+    db.session.delete(penalty)
+    db.session.commit()
+    
+    flash('Strafe erfolgreich gelöscht!', 'success')
+    return redirect(url_for('penalties'))
 
 @app.route('/export_csv')
 @require_role('kassier')

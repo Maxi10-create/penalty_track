@@ -79,6 +79,9 @@
                             <th>Gesamtbetrag</th>
                             <th>Spieler Gesamt</th>
                             <th>Notizen</th>
+                            {% if session.user_role == 'kassier' %}
+                            <th>Aktionen</th>
+                            {% endif %}
                         </tr>
                     </thead>
                     <tbody>
@@ -113,6 +116,18 @@
                                         <span class="text-muted">-</span>
                                     {% endif %}
                                 </td>
+                                {% if session.user_role == 'kassier' %}
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editPenalty({{ penalty.id }}, '{{ penalty.date.strftime('%Y-%m-%d') }}', {{ penalty.player_id }}, {{ penalty.penalty_type_id }}, {{ penalty.quantity }}, '{{ penalty.notes|e }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="deletePenalty({{ penalty.id }}, '{{ penalty.player.name }}', '{{ penalty.penalty_type.name }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                {% endif %}
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -179,4 +194,100 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Edit Penalty Modal -->
+<div class="modal fade" id="editPenaltyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Strafe bearbeiten</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('edit_penalty') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="edit_penalty_id" name="penalty_id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="edit_penalty_date" class="form-label">Datum</label>
+                            <input type="date" class="form-control" id="edit_penalty_date" name="date" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_penalty_quantity" class="form-label">Anzahl</label>
+                            <input type="number" class="form-control" id="edit_penalty_quantity" name="quantity" min="1" required>
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label for="edit_penalty_player" class="form-label">Spieler</label>
+                        <select class="form-select" id="edit_penalty_player" name="player_id" required>
+                            {% for player in players %}
+                                <option value="{{ player.id }}">{{ player.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_penalty_type" class="form-label">Vergehen</label>
+                        <select class="form-select" id="edit_penalty_type" name="penalty_type_id" required>
+                            {% for penalty_type in penalty_types %}
+                                <option value="{{ penalty_type.id }}">{{ penalty_type.name }} - {{ penalty_type.amount }}€</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_penalty_notes" class="form-label">Notizen</label>
+                        <textarea class="form-control" id="edit_penalty_notes" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-primary">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Penalty Modal -->
+<div class="modal fade" id="deletePenaltyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Strafe löschen</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('delete_penalty') }}">
+                <div class="modal-body">
+                    <input type="hidden" id="delete_penalty_id" name="penalty_id">
+                    <p>Sind Sie sicher, dass Sie diese Strafe löschen möchten?</p>
+                    <div class="alert alert-info">
+                        <strong>Spieler:</strong> <span id="delete_penalty_player"></span><br>
+                        <strong>Vergehen:</strong> <span id="delete_penalty_type"></span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Abbrechen</button>
+                    <button type="submit" class="btn btn-danger">Löschen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editPenalty(id, date, playerId, penaltyTypeId, quantity, notes) {
+    document.getElementById('edit_penalty_id').value = id;
+    document.getElementById('edit_penalty_date').value = date;
+    document.getElementById('edit_penalty_player').value = playerId;
+    document.getElementById('edit_penalty_type').value = penaltyTypeId;
+    document.getElementById('edit_penalty_quantity').value = quantity;
+    document.getElementById('edit_penalty_notes').value = notes;
+    new bootstrap.Modal(document.getElementById('editPenaltyModal')).show();
+}
+
+function deletePenalty(id, playerName, penaltyTypeName) {
+    document.getElementById('delete_penalty_id').value = id;
+    document.getElementById('delete_penalty_player').textContent = playerName;
+    document.getElementById('delete_penalty_type').textContent = penaltyTypeName;
+    new bootstrap.Modal(document.getElementById('deletePenaltyModal')).show();
+}
+</script>
 {% endblock %}

@@ -151,12 +151,37 @@ def index():
      .group_by(Player.id, Player.name)\
      .order_by(db.func.sum(PenaltyType.amount * Penalty.quantity).desc())\
      .limit(10).all()
+     
+    # Daily cumulative data for dashboard chart (last 30 days)
+    thirty_days_ago = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
+    today = date.today().strftime('%Y-%m-%d')
+    
+    daily_stats = db.session.query(
+        Penalty.date,
+        db.func.sum(PenaltyType.amount * Penalty.quantity).label('daily_total')
+    ).select_from(Penalty).join(PenaltyType)\
+     .filter(Penalty.date >= thirty_days_ago, Penalty.date <= today)\
+     .group_by(Penalty.date)\
+     .order_by(Penalty.date)\
+     .all()
+    
+    # Calculate cumulative sums
+    cumulative_data = []
+    running_total = 0
+    for daily in daily_stats:
+        running_total += float(daily.daily_total)
+        cumulative_data.append({
+            'date': daily.date.strftime('%Y-%m-%d'),
+            'daily_amount': float(daily.daily_total),
+            'cumulative_amount': running_total
+        })
     
     return render_template('dashboard.html', 
                          total_penalties=total_penalties,
                          total_amount=total_amount,
                          recent_penalties=recent_penalties,
-                         top_players=top_players)
+                         top_players=top_players,
+                         cumulative_data=cumulative_data)
 
 @app.route('/add_penalty', methods=['GET', 'POST'])
 def add_penalty():

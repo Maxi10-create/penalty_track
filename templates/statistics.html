@@ -195,7 +195,7 @@ function setPresetRange(days) {
 }
 
 // Prepare cumulative chart data
-const cumulativeData = {{ cumulative_data | tojsonfilter }};
+const cumulativeData = {{ cumulative_data | tojson }};
 
 // Daily Chart
 const dailyCtx = document.getElementById('dailyChart').getContext('2d');

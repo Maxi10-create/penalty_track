@@ -154,41 +154,97 @@
     </div>
 </div>
 
+<!-- Dashboard Charts -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Tägliche Strafen (30 Tage)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="dailyChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Kumulierte Strafen über Zeit</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="cumulativeChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Load chart data
-fetch('/api/penalty_chart_data?days=30')
-    .then(response => response.json())
-    .then(data => {
-        const ctx = document.getElementById('penaltyChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.dates,
-                datasets: [{
-                    label: 'Strafen (€)',
-                    data: data.amounts,
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                    fill: true
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '€';
-                            }
-                        }
+// Cumulative chart data from backend
+const cumulativeData = {{ cumulative_data | tojson }};
+
+// Daily Chart
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'bar',
+    data: {
+        labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+        datasets: [{
+            label: 'Tägliche Strafen (€)',
+            data: cumulativeData.map(d => d.daily_amount),
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toFixed(2) + '€';
                     }
                 }
             }
-        });
-    });
+        }
+    }
+});
+
+// Cumulative Chart
+const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+new Chart(cumulativeCtx, {
+    type: 'line',
+    data: {
+        labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+        datasets: [{
+            label: 'Kumulierte Strafen (€)',
+            data: cumulativeData.map(d => d.cumulative_amount),
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toFixed(2) + '€';
+                    }
+                }
+            }
+        }
+    }
+});
 </script>
 {% endblock %}

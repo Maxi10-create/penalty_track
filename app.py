@@ -196,7 +196,7 @@ def add_penalty():
 
 @app.route('/penalties')
 def penalties():
-    """List all penalties with filtering"""
+    """List all penalties with filtering and player totals"""
     page = request.args.get('page', 1, type=int)
     player_filter = request.args.get('player')
     date_from = request.args.get('date_from')
@@ -221,10 +221,25 @@ def penalties():
     
     players = Player.query.order_by(Player.name).all()
     
+    # Calculate player totals (all-time)
+    player_totals = db.session.query(
+        Player.id,
+        Player.name,
+        db.func.sum(PenaltyType.amount * Penalty.quantity).label('total')
+    ).select_from(Player)\
+     .join(Penalty)\
+     .join(PenaltyType)\
+     .group_by(Player.id, Player.name)\
+     .all()
+    
+    # Convert to dictionary for easy lookup
+    player_totals_dict = {pt.id: pt.total for pt in player_totals}
+    
     return render_template('penalties.html', 
                          penalties=penalties_pagination.items,
                          pagination=penalties_pagination,
                          players=players,
+                         player_totals=player_totals_dict,
                          filters={
                              'player': player_filter,
                              'date_from': date_from,
@@ -268,6 +283,27 @@ def statistics():
             Penalty.date <= date_to_obj
         ).scalar() or 0
     
+    # Daily penalty sums for chart (cumulative over time)
+    daily_stats = db.session.query(
+        Penalty.date,
+        db.func.sum(PenaltyType.amount * Penalty.quantity).label('daily_total')
+    ).select_from(Penalty).join(PenaltyType)\
+     .filter(Penalty.date >= date_from_obj, Penalty.date <= date_to_obj)\
+     .group_by(Penalty.date)\
+     .order_by(Penalty.date)\
+     .all()
+    
+    # Calculate cumulative sums
+    cumulative_data = []
+    running_total = 0
+    for daily in daily_stats:
+        running_total += float(daily.daily_total)
+        cumulative_data.append({
+            'date': daily.date.strftime('%Y-%m-%d'),
+            'daily_amount': float(daily.daily_total),
+            'cumulative_amount': running_total
+        })
+    
     # Player statistics
     player_stats = db.session.query(
         Player.name,
@@ -298,7 +334,8 @@ def statistics():
                          avg_per_penalty=avg_per_penalty,
                          max_penalty=max_penalty,
                          player_stats=player_stats,
-                         penalty_stats=penalty_stats)
+                         penalty_stats=penalty_stats,
+                         cumulative_data=cumulative_data)
 
 @app.route('/players')
 def players():

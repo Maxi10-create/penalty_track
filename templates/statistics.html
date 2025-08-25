@@ -158,13 +158,23 @@
 
 <!-- Charts -->
 <div class="row mt-4">
-    <div class="col-12">
+    <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5><i class="fas fa-chart-line"></i> Strafen Verlauf</h5>
+                <h5><i class="fas fa-chart-bar"></i> Tägliche Strafen</h5>
             </div>
             <div class="card-body">
-                <canvas id="statisticsChart" height="80"></canvas>
+                <canvas id="dailyChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> Kumulierte Strafen über Zeit</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="cumulativeChart" height="120"></canvas>
             </div>
         </div>
     </div>
@@ -184,41 +194,69 @@ function setPresetRange(days) {
     document.getElementById('date_to').value = today.toISOString().split('T')[0];
 }
 
-// Load chart data for the current period
-const dateFrom = document.getElementById('date_from').value;
-const dateTo = document.getElementById('date_to').value;
-const daysDiff = Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24));
+// Prepare cumulative chart data
+const cumulativeData = {{ cumulative_data | tojsonfilter }};
 
-fetch(`/api/penalty_chart_data?days=${daysDiff}`)
-    .then(response => response.json())
-    .then(data => {
-        const ctx = document.getElementById('statisticsChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.dates,
-                datasets: [{
-                    label: 'Strafen (€)',
-                    data: data.amounts,
-                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            callback: function(value) {
-                                return value + '€';
-                            }
-                        }
+// Daily Chart
+const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+new Chart(dailyCtx, {
+    type: 'bar',
+    data: {
+        labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+        datasets: [{
+            label: 'Tägliche Strafen (€)',
+            data: cumulativeData.map(d => d.daily_amount),
+            backgroundColor: 'rgba(54, 162, 235, 0.8)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toFixed(2) + '€';
                     }
                 }
             }
-        });
-    });
+        }
+    }
+});
+
+// Cumulative Chart
+const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+new Chart(cumulativeCtx, {
+    type: 'line',
+    data: {
+        labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+        datasets: [{
+            label: 'Kumulierte Strafen (€)',
+            data: cumulativeData.map(d => d.cumulative_amount),
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.2
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return value.toFixed(2) + '€';
+                    }
+                }
+            }
+        }
+    }
+});
 </script>
 {% endblock %}

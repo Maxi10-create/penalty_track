@@ -56,6 +56,30 @@ const db = {
     const maxPenalty = Math.max(...penalties.map(p => p.total_amount), 0);
     const avgPerPenalty = totalCount > 0 ? totalAmount / totalCount : 0;
 
+    // Daily statistics for cumulative chart
+    const dailyStats = await this.query(env, `
+      SELECT 
+        p.date,
+        SUM(p.quantity * pt.amount) as daily_total
+      FROM penalties p
+      JOIN penalty_types pt ON p.penalty_type_id = pt.id
+      WHERE p.date >= ? AND p.date <= ?
+      GROUP BY p.date
+      ORDER BY p.date
+    `, [dateFrom, dateTo]);
+
+    // Calculate cumulative data
+    const cumulativeData = [];
+    let runningTotal = 0;
+    dailyStats.forEach(daily => {
+      runningTotal += daily.daily_total;
+      cumulativeData.push({
+        date: daily.date,
+        daily_amount: daily.daily_total,
+        cumulative_amount: runningTotal
+      });
+    });
+
     // Player statistics
     const playerStats = {};
     penalties.forEach(p => {
@@ -77,7 +101,8 @@ const db = {
       maxPenalty: Math.round(maxPenalty * 100) / 100,
       avgPerPenalty: Math.round(avgPerPenalty * 100) / 100,
       topPlayers,
-      recentPenalties: penalties.slice(0, 10)
+      recentPenalties: penalties.slice(0, 10),
+      cumulativeData
     };
   }
 };
@@ -456,6 +481,24 @@ app.get('/penalties', async (c) => {
     LIMIT 50
   `);
 
+  // Get player totals (all-time)
+  const playerTotals = await db.query(env, `
+    SELECT 
+      pl.id as player_id,
+      pl.name as player_name,
+      SUM(p.quantity * pt.amount) as total_amount
+    FROM players pl
+    LEFT JOIN penalties p ON pl.id = p.player_id
+    LEFT JOIN penalty_types pt ON p.penalty_type_id = pt.id
+    GROUP BY pl.id, pl.name
+  `);
+  
+  // Convert to dictionary for easy lookup
+  const playerTotalsDict = {};
+  playerTotals.forEach(pt => {
+    playerTotalsDict[pt.player_id] = pt.total_amount || 0;
+  });
+
   const content = `
     ${success ? '<div class="alert alert-success alert-dismissible fade show"><strong>Erfolg!</strong> Strafe wurde hinzugefügt. <button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>' : ''}
     
@@ -491,6 +534,7 @@ app.get('/penalties', async (c) => {
                                 <th>Anzahl</th>
                                 <th>Einzelbetrag</th>
                                 <th>Gesamtbetrag</th>
+                                <th>Spieler Gesamt</th>
                                 <th>Notizen</th>
                             </tr>
                         </thead>
@@ -503,6 +547,11 @@ app.get('/penalties', async (c) => {
                                     <td><span class="badge bg-primary">${p.quantity}</span></td>
                                     <td>${p.penalty_amount.toFixed(2)}€</td>
                                     <td><strong class="text-danger">${p.total_amount.toFixed(2)}€</strong></td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            ${(playerTotalsDict[p.player_id] || 0).toFixed(2)}€
+                                        </span>
+                                    </td>
                                     <td>${p.notes || '<span class="text-muted">-</span>'}</td>
                                 </tr>
                             `).join('')}
@@ -599,7 +648,7 @@ app.get('/statistics', async (c) => {
         </div>
     </div>
 
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card">
                 <div class="card-header">
@@ -635,7 +684,97 @@ app.get('/statistics', async (c) => {
                 </div>
             </div>
         </div>
-    </div>`;
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-bar"></i> Tägliche Strafen</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="dailyChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-chart-line"></i> Kumulierte Strafen über Zeit</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="cumulativeChart" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // Cumulative chart data
+    const cumulativeData = ${JSON.stringify(stats.cumulativeData)};
+
+    // Daily Chart
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+    new Chart(dailyCtx, {
+        type: 'bar',
+        data: {
+            labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+            datasets: [{
+                label: 'Tägliche Strafen (€)',
+                data: cumulativeData.map(d => d.daily_amount),
+                backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2) + '€';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Cumulative Chart
+    const cumulativeCtx = document.getElementById('cumulativeChart').getContext('2d');
+    new Chart(cumulativeCtx, {
+        type: 'line',
+        data: {
+            labels: cumulativeData.map(d => new Date(d.date).toLocaleDateString('de-DE')),
+            datasets: [{
+                label: 'Kumulierte Strafen (€)',
+                data: cumulativeData.map(d => d.cumulative_amount),
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                borderColor: 'rgba(255, 99, 132, 1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(2) + '€';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    </script>`;
 
   return c.html(getHTML('Statistiken', content, 'statistics'));
 });

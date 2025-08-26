@@ -1,0 +1,100 @@
+
+[     UTC     ] Logs for penaltytrack-fgfkxp426amhbpoeuofmtx.streamlit.app/
+────────────────────────────────────────────────────────────────────────────────────────
+[18:37:36] 🚀 Starting up repository: 'penalty_track', branch: 'main', main module: 'streamlit_app.py'
+[18:37:36] 🐙 Cloning repository...
+[18:37:36] 🐙 Cloning into '/mount/src/penalty_track'...
+
+[18:37:36] 🐙 Cloned repository!
+[18:37:36] 🐙 Pulling code changes from Github...
+[18:37:37] 📦 Processing dependencies...
+Prepared 46 packages in 4.18s
+Installed 46 packages in 645ms
+ + altair==5.5.0
+ + attrs==25.3.0
+ + blinker==1.9.0
+ + cachetools==6.2.0
+ + certifi==2025.8.3
+ + charset-normalizer==3.4.3
+ + click==8.2.1
+ + et-xmlfile==2.0.0
+ + flask==3.1.2
+ + flask-sqlalchemy==3.1.1
+ + gitdb==4.0.12[2025-08-26 18:37:42.684389] 
+ + gitpython==3.1.45
+ + greenlet==3.2.4
+ + idna==3.10
+ + itsdangerous==2.2.0
+ + jinja2==3.1.6
+ + [2025-08-26 18:37:42.684620] jsonschema==4.25.1
+ + jsonschema-specifications==2025.4.1
+ + markupsafe==3.0.2
+ + narwhals==2.2.0[2025-08-26 18:37:42.684802] 
+ + numpy==2.3.2
+ + openpyxl==3.1.5[2025-08-26 18:37:42.684976] 
+ + packaging==25.0
+ + pandas==2.3.2
+ [2025-08-26 18:37:42.685105] + pillow==11.3.0
+ + plotly==6.3.0
+ + [2025-08-26 18:37:42.685224] protobuf==6.32.0
+ + pyarrow==21.0.0
+ + pydeck==[2025-08-26 18:37:42.685373] 0.9.1
+ + python-dateutil==2.9.0.post0
+ + pytz==[2025-08-26 18:37:42.685555] 2025.2
+ + referencing==0.36.2
+ + requests==2.32.5
+ + rpds-py==0.27.0
+ + six[2025-08-26 18:37:42.685751] ==1.17.0
+ + smmap==5.0.2
+ + sqlalchemy==2.0.43
+ [2025-08-26 18:37:42.686017] + streamlit==1.48.1
+ + tenacity==9.1.2
+ [2025-08-26 18:37:42.686229] + toml==0.10.2
+ + tornado==6.5.2
+ [2025-08-26 18:37:42.686494] + typing-extensions==4.14.1
+ + tzdata==2025.2
+ + urllib3==2.5.0
+ + watchdog==6.0.0[2025-08-26 18:37:42.686911] 
+ + werkzeug==3.1.3
+[18:37:43] 🐍 Python dependencies were installed from /mount/src/penalty_track/uv.lock using uv-sync.
+[18:37:43] 📦 WARN: More than one requirements file detected in the repository. Available options: uv-sync /mount/src/penalty_track/uv.lock, poetry /mount/src/penalty_track/pyproject.toml. Used: uv-sync with /mount/src/penalty_track/uv.lock
+Check if streamlit is installed
+Streamlit is already installed
+[18:37:45] 📦 Processed dependencies!
+2025-08-26 18:37:49.408 Failed to schedule watch observer for path /mount/src/penalty_track/.streamlit
+Traceback (most recent call last):
+  File "/home/adminuser/venv/lib/python3.13/site-packages/streamlit/watcher/event_based_path_watcher.py", line 186, in watch_path
+    folder_handler.watch = self._observer.schedule(
+                           ~~~~~~~~~~~~~~~~~~~~~~~^
+        folder_handler, folder_path, recursive=True
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/api.py", line 312, in schedule
+    emitter.start()
+    ~~~~~~~~~~~~~^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/utils/__init__.py", line 75, in start
+    self.on_thread_start()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify.py", line 119, in on_thread_start
+    self._inotify = InotifyBuffer(path, recursive=self.watch.is_recursive, event_mask=event_mask)
+                    ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify_buffer.py", line 30, in __init__
+    self._inotify = Inotify(path, recursive=recursive, event_mask=event_mask)
+                    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify_c.py", line 185, in __init__
+    self._add_dir_watch(path, event_mask, recursive=recursive)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify_c.py", line 404, in _add_dir_watch
+    self._add_watch(path, mask)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify_c.py", line 424, in _add_watch
+    Inotify._raise_error()
+    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/adminuser/venv/lib/python3.13/site-packages/watchdog/observers/inotify_c.py", line 435, in _raise_error
+    raise OSError(errno.ENOSPC, "inotify watch limit reached")
+OSError: [Errno 28] inotify watch limit reached
+
+
+
+[18:37:51] ❗️ The service has encountered an error while checking the health of the Streamlit app: Get "http://localhost:8501/healthz": dial tcp 127.0.0.1:8501: connect: connection refused

@@ -343,17 +343,20 @@ def add_penalty():
         
         with col1:
             penalty_date = st.date_input("Datum", value=date.today())
+            player_options = dict(zip(players['id'], players['name']))
             player_id = st.selectbox(
                 "Spieler",
                 players['id'].tolist(),
-                format_func=lambda x: players[players['id']==x]['name'].iloc[0]
+                format_func=lambda x: player_options[x]
             )
             
         with col2:
+            penalty_type_options = dict(zip(penalty_types['id'], 
+                                             [f"{row['name']} (€{row['amount']})" for _, row in penalty_types.iterrows()]))
             penalty_type_id = st.selectbox(
                 "Vergehen",
                 penalty_types['id'].tolist(),
-                format_func=lambda x: f"{penalty_types[penalty_types['id']==x]['name'].iloc[0]} (€{penalty_types[penalty_types['id']==x]['amount'].iloc[0]})"
+                format_func=lambda x: penalty_type_options[x]
             )
             quantity = st.number_input("Anzahl", min_value=1, value=1)
         
@@ -380,10 +383,11 @@ def view_penalties():
     
     with col1:
         if not players.empty:
+            player_options = dict(zip(players['id'], players['name']))
             player_filter = st.selectbox(
                 "Spieler",
                 [None] + players['id'].tolist(),
-                format_func=lambda x: "Alle Spieler" if x is None else players[players['id']==x]['name'].iloc[0]
+                format_func=lambda x: "Alle Spieler" if x is None else player_options[x]
             )
         else:
             player_filter = None
@@ -431,10 +435,12 @@ def view_penalties():
         # Delete for kassier
         if st.session_state.user_role == 'kassier':
             st.subheader("Strafe löschen")
+            penalty_options = dict(zip(penalties['id'], 
+                                     [f"{row['date']} - {row['player']}" for _, row in penalties.iterrows()]))
             penalty_to_delete = st.selectbox(
                 "Strafe",
                 penalties['id'].tolist(),
-                format_func=lambda x: f"{penalties[penalties['id']==x]['date'].iloc[0]} - {penalties[penalties['id']==x]['player'].iloc[0]}"
+                format_func=lambda x: penalty_options[x]
             )
             
             if st.button("Löschen", type="secondary"):

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 ASV Natz Penalty Tracking Streamlit Application
-Streamlit-based web interface for penalty management
+Optimized for Streamlit Cloud deployment
 """
 
 import streamlit as st
@@ -12,8 +12,9 @@ from datetime import datetime, date, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
 import io
+import os
 
-# Set page config
+# Set page config - must be first Streamlit command
 st.set_page_config(
     page_title="ASV Natz - Penalty Tracker",
     page_icon="⚽",
@@ -21,45 +22,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS to improve styling
-st.markdown("""
-<style>
-    .main {
-        padding-top: 1rem;
-    }
-    .stSelectbox label {
-        font-weight: bold;
-    }
-    .stMetric {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 0.5rem solid #ff6b6b;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-# Access codes for different roles
-ACCESS_CODES = {
-    'kassier': '1970'
-}
+# Access codes
+ACCESS_CODES = {'kassier': '1970'}
 
 # Initialize session state
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'user_role' not in st.session_state:
     st.session_state.user_role = None
-if 'db_initialized' not in st.session_state:
-    st.session_state.db_initialized = False
+
+def get_db_path():
+    """Get database path"""
+    return os.path.join(os.getcwd(), 'penalty_tracker.db')
 
 @st.cache_resource
 def init_database():
     """Initialize database with default data"""
-    if st.session_state.db_initialized:
-        return True
-        
+    db_path = get_db_path()
+    
     try:
-        conn = sqlite3.connect('penalty_tracker.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         
         # Create tables
@@ -93,7 +75,7 @@ def init_database():
             )
         ''')
         
-        # Add players if not exist
+        # Check if players exist
         cursor.execute('SELECT COUNT(*) FROM player')
         if cursor.fetchone()[0] == 0:
             players = [
@@ -109,7 +91,7 @@ def init_database():
             for player_name in players:
                 cursor.execute('INSERT INTO player (name) VALUES (?)', (player_name,))
         
-        # Add penalty types if not exist
+        # Check if penalty types exist
         cursor.execute('SELECT COUNT(*) FROM penalty_type')
         if cursor.fetchone()[0] == 0:
             penalties = [
@@ -171,39 +153,16 @@ def init_database():
         
         conn.commit()
         conn.close()
-        st.session_state.db_initialized = True
         return True
-    except Exception as e:
-        st.error(f"Datenbankinitialisierung fehlgeschlagen: {str(e)}")
-        return False
-
-def get_db_connection():
-    """Get database connection"""
-    try:
-        return sqlite3.connect('penalty_tracker.db')
-    except Exception as e:
-        st.error(f"Datenbankverbindung fehlgeschlagen: {str(e)}")
-        return None
-
-def get_data(query, params=None):
-    """Execute SQL query and return results"""
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            return pd.DataFrame()
-        df = pd.read_sql_query(query, conn, params=params)
-        conn.close()
-        return df
+        
     except Exception as e:
         st.error(f"Datenbankfehler: {str(e)}")
-        return pd.DataFrame()
+        return False
 
 def execute_query(query, params=None):
-    """Execute SQL query without return"""
+    """Execute database query"""
     try:
-        conn = get_db_connection()
-        if conn is None:
-            return None
+        conn = sqlite3.connect(get_db_path())
         cursor = conn.cursor()
         if params:
             cursor.execute(query, params)
@@ -217,607 +176,463 @@ def execute_query(query, params=None):
         st.error(f"Datenbankfehler: {str(e)}")
         return None
 
-def authenticate():
-    """Authentication page"""
-    st.title("🔐 ASV Natz - Penalty Tracker")
-    st.markdown("### Bitte melden Sie sich an")
+def get_data(query, params=None):
+    """Get data from database"""
+    try:
+        conn = sqlite3.connect(get_db_path())
+        df = pd.read_sql_query(query, conn, params=params)
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Datenbankfehler: {str(e)}")
+        return pd.DataFrame()
+
+def login_page():
+    """Login page"""
+    st.markdown("""
+    <div style='text-align: center; padding: 2rem;'>
+        <h1>🏆 ASV Natz Penalty Tracker</h1>
+        <h3>Bitte melden Sie sich an</h3>
+    </div>
+    """, unsafe_allow_html=True)
     
     col1, col2, col3 = st.columns([1, 2, 1])
     
     with col2:
-        st.markdown("---")
-        
-        access_type = st.selectbox(
-            "Zugriffstyp auswählen:",
-            options=["", "spieler", "kassier"],
-            format_func=lambda x: {"": "Bitte wählen...", "spieler": "👥 Spieler", "kassier": "💰 Kassier"}.get(x, x)
-        )
-        
-        access_code = ""
-        if access_type == "kassier":
-            access_code = st.text_input("Zugangscode:", type="password")
-        
-        if st.button("Anmelden", type="primary", use_container_width=True):
-            if access_type == "spieler":
-                st.session_state.authenticated = True
-                st.session_state.user_role = "spieler"
-                st.success("✅ Erfolgreich als Spieler angemeldet!")
-                st.rerun()
-            elif access_type == "kassier":
-                if access_code == ACCESS_CODES['kassier']:
+        with st.container():
+            st.markdown("---")
+            
+            access_type = st.selectbox(
+                "Zugriffstyp:",
+                ["", "spieler", "kassier"],
+                format_func=lambda x: {
+                    "": "Bitte wählen...", 
+                    "spieler": "👥 Spieler", 
+                    "kassier": "💰 Kassier"
+                }.get(x, x)
+            )
+            
+            access_code = ""
+            if access_type == "kassier":
+                access_code = st.text_input("Zugangscode:", type="password")
+            
+            if st.button("Anmelden", type="primary", use_container_width=True):
+                if access_type == "spieler":
                     st.session_state.authenticated = True
-                    st.session_state.user_role = "kassier"
-                    st.success("✅ Erfolgreich als Kassier angemeldet!")
+                    st.session_state.user_role = "spieler"
+                    st.success("✅ Erfolgreich als Spieler angemeldet!")
                     st.rerun()
+                elif access_type == "kassier":
+                    if access_code == ACCESS_CODES['kassier']:
+                        st.session_state.authenticated = True
+                        st.session_state.user_role = "kassier"
+                        st.success("✅ Erfolgreich als Kassier angemeldet!")
+                        st.rerun()
+                    else:
+                        st.error("❌ Ungültiger Zugangscode!")
                 else:
-                    st.error("❌ Ungültiger Zugangscode für Kassier!")
-            else:
-                st.warning("⚠️ Bitte wählen Sie einen Zugriffstyp!")
-
-def logout():
-    """Logout function"""
-    st.session_state.authenticated = False
-    st.session_state.user_role = None
-    st.success("👋 Sie wurden erfolgreich abgemeldet.")
-    st.rerun()
+                    st.warning("⚠️ Bitte wählen Sie einen Zugriffstyp!")
 
 def dashboard():
-    """Main dashboard with overview"""
+    """Dashboard"""
     st.title("📊 Dashboard")
     
-    # Get stats safely
-    try:
-        total_penalties_df = get_data("SELECT COUNT(*) as count FROM penalty")
-        total_penalties = int(total_penalties_df['count'].iloc[0]) if not total_penalties_df.empty else 0
-        
-        total_amount_df = get_data("""
-            SELECT COALESCE(SUM(pt.amount * p.quantity), 0) as total 
-            FROM penalty p 
+    # Stats
+    total_penalties_df = get_data("SELECT COUNT(*) as count FROM penalty")
+    total_penalties = int(total_penalties_df['count'].iloc[0]) if not total_penalties_df.empty else 0
+    
+    total_amount_df = get_data("""
+        SELECT COALESCE(SUM(pt.amount * p.quantity), 0) as total 
+        FROM penalty p 
+        JOIN penalty_type pt ON p.penalty_type_id = pt.id
+    """)
+    total_amount = float(total_amount_df['total'].iloc[0]) if not total_amount_df.empty else 0.0
+    
+    today = date.today().strftime('%Y-%m-%d')
+    today_penalties_df = get_data("SELECT COUNT(*) as count FROM penalty WHERE date = ?", (today,))
+    today_penalties = int(today_penalties_df['count'].iloc[0]) if not today_penalties_df.empty else 0
+    
+    # KPIs
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Gesamte Strafen", total_penalties)
+    with col2:
+        st.metric("Gesamtbetrag", f"€{total_amount:.2f}")
+    with col3:
+        st.metric("Heutige Strafen", today_penalties)
+    with col4:
+        avg_penalty = total_amount / total_penalties if total_penalties > 0 else 0
+        st.metric("Ø pro Strafe", f"€{avg_penalty:.2f}")
+    
+    st.markdown("---")
+    
+    # Recent penalties
+    st.subheader("🕒 Letzte Strafen")
+    recent_penalties = get_data("""
+        SELECT p.date, pl.name as player, pt.name as penalty_type, 
+               p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
+        FROM penalty p
+        JOIN player pl ON p.player_id = pl.id
+        JOIN penalty_type pt ON p.penalty_type_id = pt.id
+        ORDER BY p.created_at DESC
+        LIMIT 10
+    """)
+    
+    if not recent_penalties.empty:
+        st.dataframe(recent_penalties, use_container_width=True)
+    else:
+        st.info("Keine Strafen vorhanden.")
+    
+    # Charts
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("🏆 Top Spieler")
+        top_players = get_data("""
+            SELECT pl.name, SUM(pt.amount * p.quantity) as total_amount
+            FROM player pl
+            JOIN penalty p ON pl.id = p.player_id
             JOIN penalty_type pt ON p.penalty_type_id = pt.id
-        """)
-        total_amount = float(total_amount_df['total'].iloc[0]) if not total_amount_df.empty else 0.0
-        
-        # Today's penalties
-        today = date.today().strftime('%Y-%m-%d')
-        today_penalties_df = get_data("SELECT COUNT(*) as count FROM penalty WHERE date = ?", (today,))
-        today_penalties = int(today_penalties_df['count'].iloc[0]) if not today_penalties_df.empty else 0
-        
-        # Display KPIs
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Gesamte Strafen", total_penalties)
-        
-        with col2:
-            st.metric("Gesamtbetrag", f"€{total_amount:.2f}")
-        
-        with col3:
-            st.metric("Heutige Strafen", today_penalties)
-        
-        with col4:
-            avg_penalty = total_amount / total_penalties if total_penalties > 0 else 0
-            st.metric("Ø pro Strafe", f"€{avg_penalty:.2f}")
-        
-        st.markdown("---")
-        
-        # Recent penalties
-        st.subheader("🕒 Letzte Strafen")
-        recent_penalties = get_data("""
-            SELECT p.date, pl.name as player, pt.name as penalty_type, 
-                   p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
-            FROM penalty p
-            JOIN player pl ON p.player_id = pl.id
-            JOIN penalty_type pt ON p.penalty_type_id = pt.id
-            ORDER BY p.created_at DESC
+            GROUP BY pl.id, pl.name
+            ORDER BY total_amount DESC
             LIMIT 10
         """)
         
-        if not recent_penalties.empty:
-            st.dataframe(recent_penalties, use_container_width=True, hide_index=True)
-        else:
-            st.info("ℹ️ Keine Strafen vorhanden.")
-        
-        # Charts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("🏆 Top Spieler (nach Betrag)")
-            top_players = get_data("""
-                SELECT pl.name, COUNT(p.id) as penalty_count, 
-                       SUM(pt.amount * p.quantity) as total_amount
-                FROM player pl
-                JOIN penalty p ON pl.id = p.player_id
-                JOIN penalty_type pt ON p.penalty_type_id = pt.id
-                GROUP BY pl.id, pl.name
-                ORDER BY total_amount DESC
-                LIMIT 10
-            """)
-            
-            if not top_players.empty:
-                fig = px.bar(top_players, x='name', y='total_amount', 
-                            title="Top Spieler nach Gesamtbetrag", 
-                            labels={'name': 'Spieler', 'total_amount': 'Betrag (€)'})
-                fig.update_xaxes(tickangle=45)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("ℹ️ Keine Daten für das Diagramm verfügbar.")
-        
-        with col2:
-            st.subheader("📈 Kumulative Entwicklung (30 Tage)")
-            thirty_days_ago = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
-            
-            daily_stats = get_data("""
-                SELECT p.date, SUM(pt.amount * p.quantity) as daily_total
-                FROM penalty p
-                JOIN penalty_type pt ON p.penalty_type_id = pt.id
-                WHERE p.date >= ?
-                GROUP BY p.date
-                ORDER BY p.date
-            """, (thirty_days_ago,))
-            
-            if not daily_stats.empty:
-                daily_stats['cumulative'] = daily_stats['daily_total'].cumsum()
-                fig = px.line(daily_stats, x='date', y='cumulative',
-                             title="Kumulative Strafen-Entwicklung",
-                             labels={'date': 'Datum', 'cumulative': 'Kumulativ (€)'})
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("ℹ️ Keine Daten für das Diagramm verfügbar.")
-                
-    except Exception as e:
-        st.error(f"Fehler beim Laden des Dashboards: {str(e)}")
-
-def add_penalty():
-    """Add new penalty page"""
-    st.title("➕ Strafe hinzufügen")
+        if not top_players.empty:
+            fig = px.bar(top_players, x='name', y='total_amount', 
+                        title="Top Spieler nach Gesamtbetrag")
+            fig.update_xaxes(tickangle=45)
+            st.plotly_chart(fig, use_container_width=True)
     
-    if st.session_state.user_role != 'kassier':
-        st.error("❌ Keine Berechtigung für diese Aktion.")
-        return
-    
-    try:
-        # Get players and penalty types
-        players = get_data("SELECT id, name FROM player ORDER BY name")
-        penalty_types = get_data("SELECT id, name, amount FROM penalty_type ORDER BY name")
+    with col2:
+        st.subheader("📈 Entwicklung (30 Tage)")
+        thirty_days_ago = (date.today() - timedelta(days=30)).strftime('%Y-%m-%d')
         
-        if players.empty or penalty_types.empty:
-            st.error("❌ Keine Spieler oder Vergehen in der Datenbank gefunden!")
-            return
-        
-        with st.form("add_penalty_form", clear_on_submit=True):
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                penalty_date = st.date_input("Datum", value=date.today())
-                player_options = dict(zip(players['id'], players['name']))
-                player_id = st.selectbox(
-                    "Spieler",
-                    options=players['id'].tolist(),
-                    format_func=lambda x: player_options[x]
-                )
-                
-            with col2:
-                penalty_type_options = dict(zip(penalty_types['id'], 
-                                                  [f"{row['name']} (€{row['amount']})" for _, row in penalty_types.iterrows()]))
-                penalty_type_id = st.selectbox(
-                    "Vergehen",
-                    options=penalty_types['id'].tolist(),
-                    format_func=lambda x: penalty_type_options[x]
-                )
-                quantity = st.number_input("Anzahl", min_value=1, value=1)
-            
-            notes = st.text_area("Notizen (optional)")
-            
-            submitted = st.form_submit_button("✅ Strafe hinzufügen", type="primary")
-            
-            if submitted:
-                try:
-                    result = execute_query("""
-                        INSERT INTO penalty (date, player_id, penalty_type_id, quantity, notes)
-                        VALUES (?, ?, ?, ?, ?)
-                    """, (penalty_date, player_id, penalty_type_id, quantity, notes))
-                    
-                    if result is not None:
-                        st.success("✅ Strafe erfolgreich hinzugefügt!")
-                        st.balloons()
-                    else:
-                        st.error("❌ Fehler beim Hinzufügen der Strafe!")
-                        
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Hinzufügen der Strafe: {str(e)}")
-                    
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Daten: {str(e)}")
-
-def view_penalties():
-    """View and manage penalties"""
-    st.title("📋 Strafen verwalten")
-    
-    try:
-        # Filters
-        st.subheader("🔍 Filter")
-        col1, col2, col3 = st.columns(3)
-        
-        players = get_data("SELECT id, name FROM player ORDER BY name")
-        
-        with col1:
-            if not players.empty:
-                player_options = dict(zip(players['id'], players['name']))
-                player_filter = st.selectbox(
-                    "Spieler",
-                    options=[None] + players['id'].tolist(),
-                    format_func=lambda x: "Alle Spieler" if x is None else player_options[x]
-                )
-            else:
-                player_filter = None
-        
-        with col2:
-            date_from = st.date_input("Von Datum", value=None)
-        
-        with col3:
-            date_to = st.date_input("Bis Datum", value=None)
-        
-        # Build query
-        query = """
-            SELECT p.id, p.date, pl.name as player, pt.name as penalty_type, 
-                   p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
-            FROM penalty p
-            JOIN player pl ON p.player_id = pl.id
-            JOIN penalty_type pt ON p.penalty_type_id = pt.id
-            WHERE 1=1
-        """
-        params = []
-        
-        if player_filter:
-            query += " AND p.player_id = ?"
-            params.append(player_filter)
-        
-        if date_from:
-            query += " AND p.date >= ?"
-            params.append(date_from)
-        
-        if date_to:
-            query += " AND p.date <= ?"
-            params.append(date_to)
-        
-        query += " ORDER BY p.date DESC"
-        
-        penalties = get_data(query, params if params else None)
-        
-        st.subheader("📊 Strafen")
-        
-        if not penalties.empty:
-            st.dataframe(penalties, use_container_width=True, hide_index=True)
-            
-            # Summary
-            total_count = len(penalties)
-            total_amount = penalties['total'].sum()
-            st.markdown(f"**📈 Gesamt:** {total_count} Strafen, €{total_amount:.2f}")
-            
-            # Delete functionality for kassier
-            if st.session_state.user_role == 'kassier':
-                st.subheader("🗑️ Strafe löschen")
-                penalty_options = dict(zip(penalties['id'], 
-                                         [f"{row['date']} - {row['player']} - {row['penalty_type']}" for _, row in penalties.iterrows()]))
-                penalty_to_delete = st.selectbox(
-                    "Strafe auswählen",
-                    options=penalties['id'].tolist(),
-                    format_func=lambda x: penalty_options[x]
-                )
-                
-                if st.button("🗑️ Strafe löschen", type="secondary"):
-                    result = execute_query("DELETE FROM penalty WHERE id = ?", (penalty_to_delete,))
-                    if result is not None:
-                        st.success("✅ Strafe erfolgreich gelöscht!")
-                        st.rerun()
-        else:
-            st.info("ℹ️ Keine Strafen gefunden.")
-            
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Strafen: {str(e)}")
-
-def statistics():
-    """Statistics page"""
-    st.title("📈 Statistiken")
-    
-    try:
-        # Date range
-        col1, col2 = st.columns(2)
-        with col1:
-            date_from = st.date_input("Von Datum", value=date.today() - timedelta(days=90))
-        with col2:
-            date_to = st.date_input("Bis Datum", value=date.today())
-        
-        # KPIs for period
-        period_stats = get_data("""
-            SELECT COUNT(*) as count, COALESCE(SUM(pt.amount * p.quantity), 0) as total
-            FROM penalty p
-            JOIN penalty_type pt ON p.penalty_type_id = pt.id
-            WHERE p.date BETWEEN ? AND ?
-        """, (date_from, date_to))
-        
-        col1, col2, col3, col4 = st.columns(4)
-        if not period_stats.empty:
-            count = int(period_stats['count'].iloc[0])
-            total = float(period_stats['total'].iloc[0])
-            
-            with col1:
-                st.metric("Strafen (Zeitraum)", count)
-            with col2:
-                st.metric("Betrag (Zeitraum)", f"€{total:.2f}")
-            with col3:
-                avg_per_penalty = total / count if count > 0 else 0
-                st.metric("Ø pro Strafe", f"€{avg_per_penalty:.2f}")
-            with col4:
-                days = (date_to - date_from).days + 1
-                avg_per_day = total / days if days > 0 else 0
-                st.metric("Ø pro Tag", f"€{avg_per_day:.2f}")
-        else:
-            with col1:
-                st.metric("Strafen (Zeitraum)", 0)
-            with col2:
-                st.metric("Betrag (Zeitraum)", "€0.00")
-            with col3:
-                st.metric("Ø pro Strafe", "€0.00")
-            with col4:
-                st.metric("Ø pro Tag", "€0.00")
-        
-        # Charts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("👥 Spieler Statistiken")
-            player_stats = get_data("""
-                SELECT pl.name, COUNT(p.id) as count, SUM(pt.amount * p.quantity) as total
-                FROM player pl
-                JOIN penalty p ON pl.id = p.player_id
-                JOIN penalty_type pt ON p.penalty_type_id = pt.id
-                WHERE p.date BETWEEN ? AND ?
-                GROUP BY pl.id, pl.name
-                ORDER BY total DESC
-                LIMIT 15
-            """, (date_from, date_to))
-            
-            if not player_stats.empty:
-                fig = px.bar(player_stats, x='name', y='total', 
-                            title="Spieler nach Gesamtbetrag",
-                            labels={'name': 'Spieler', 'total': 'Betrag (€)'})
-                fig.update_xaxes(tickangle=45)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("ℹ️ Keine Daten verfügbar.")
-        
-        with col2:
-            st.subheader("⚖️ Vergehen Statistiken")
-            penalty_stats = get_data("""
-                SELECT pt.name, COUNT(p.id) as count, SUM(pt.amount * p.quantity) as total
-                FROM penalty_type pt
-                JOIN penalty p ON pt.id = p.penalty_type_id
-                WHERE p.date BETWEEN ? AND ?
-                GROUP BY pt.id, pt.name
-                ORDER BY total DESC
-                LIMIT 15
-            """, (date_from, date_to))
-            
-            if not penalty_stats.empty:
-                fig = px.bar(penalty_stats, x='name', y='total', 
-                            title="Vergehen nach Gesamtbetrag",
-                            labels={'name': 'Vergehen', 'total': 'Betrag (€)'})
-                fig.update_xaxes(tickangle=45)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("ℹ️ Keine Daten verfügbar.")
-        
-        # Timeline
-        st.subheader("📅 Zeitliche Entwicklung")
         daily_stats = get_data("""
             SELECT p.date, SUM(pt.amount * p.quantity) as daily_total
             FROM penalty p
             JOIN penalty_type pt ON p.penalty_type_id = pt.id
-            WHERE p.date BETWEEN ? AND ?
+            WHERE p.date >= ?
             GROUP BY p.date
             ORDER BY p.date
-        """, (date_from, date_to))
+        """, (thirty_days_ago,))
         
         if not daily_stats.empty:
             daily_stats['cumulative'] = daily_stats['daily_total'].cumsum()
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=daily_stats['date'], y=daily_stats['daily_total'], 
-                                    mode='lines+markers', name='Täglich', line=dict(color='blue')))
-            fig.add_trace(go.Scatter(x=daily_stats['date'], y=daily_stats['cumulative'], 
-                                    mode='lines', name='Kumulativ', line=dict(color='red')))
-            fig.update_layout(title="Strafen-Entwicklung über Zeit", 
-                            xaxis_title="Datum", yaxis_title="Betrag (€)")
+            fig = px.line(daily_stats, x='date', y='cumulative',
+                         title="Kumulative Entwicklung")
             st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("ℹ️ Keine Daten für das Diagramm verfügbar.")
+
+def add_penalty():
+    """Add penalty"""
+    st.title("➕ Strafe hinzufügen")
+    
+    if st.session_state.user_role != 'kassier':
+        st.error("Keine Berechtigung.")
+        return
+    
+    players = get_data("SELECT id, name FROM player ORDER BY name")
+    penalty_types = get_data("SELECT id, name, amount FROM penalty_type ORDER BY name")
+    
+    if players.empty or penalty_types.empty:
+        st.error("Keine Spieler oder Vergehen gefunden!")
+        return
+    
+    with st.form("add_penalty"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            penalty_date = st.date_input("Datum", value=date.today())
+            player_id = st.selectbox(
+                "Spieler",
+                players['id'].tolist(),
+                format_func=lambda x: players[players['id']==x]['name'].iloc[0]
+            )
             
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Statistiken: {str(e)}")
+        with col2:
+            penalty_type_id = st.selectbox(
+                "Vergehen",
+                penalty_types['id'].tolist(),
+                format_func=lambda x: f"{penalty_types[penalty_types['id']==x]['name'].iloc[0]} (€{penalty_types[penalty_types['id']==x]['amount'].iloc[0]})"
+            )
+            quantity = st.number_input("Anzahl", min_value=1, value=1)
+        
+        notes = st.text_area("Notizen")
+        
+        if st.form_submit_button("Strafe hinzufügen", type="primary"):
+            result = execute_query("""
+                INSERT INTO penalty (date, player_id, penalty_type_id, quantity, notes)
+                VALUES (?, ?, ?, ?, ?)
+            """, (penalty_date, player_id, penalty_type_id, quantity, notes))
+            
+            if result:
+                st.success("Strafe erfolgreich hinzugefügt!")
+                st.balloons()
+
+def view_penalties():
+    """View penalties"""
+    st.title("📋 Strafen anzeigen")
+    
+    # Filters
+    col1, col2, col3 = st.columns(3)
+    
+    players = get_data("SELECT id, name FROM player ORDER BY name")
+    
+    with col1:
+        if not players.empty:
+            player_filter = st.selectbox(
+                "Spieler",
+                [None] + players['id'].tolist(),
+                format_func=lambda x: "Alle Spieler" if x is None else players[players['id']==x]['name'].iloc[0]
+            )
+        else:
+            player_filter = None
+    
+    with col2:
+        date_from = st.date_input("Von", value=None)
+    
+    with col3:
+        date_to = st.date_input("Bis", value=None)
+    
+    # Query
+    query = """
+        SELECT p.id, p.date, pl.name as player, pt.name as penalty_type, 
+               p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
+        FROM penalty p
+        JOIN player pl ON p.player_id = pl.id
+        JOIN penalty_type pt ON p.penalty_type_id = pt.id
+        WHERE 1=1
+    """
+    params = []
+    
+    if player_filter:
+        query += " AND p.player_id = ?"
+        params.append(player_filter)
+    
+    if date_from:
+        query += " AND p.date >= ?"
+        params.append(date_from)
+    
+    if date_to:
+        query += " AND p.date <= ?"
+        params.append(date_to)
+    
+    query += " ORDER BY p.date DESC"
+    
+    penalties = get_data(query, params if params else None)
+    
+    if not penalties.empty:
+        st.dataframe(penalties, use_container_width=True)
+        
+        total_count = len(penalties)
+        total_amount = penalties['total'].sum()
+        st.markdown(f"**Gesamt:** {total_count} Strafen, €{total_amount:.2f}")
+        
+        # Delete for kassier
+        if st.session_state.user_role == 'kassier':
+            st.subheader("Strafe löschen")
+            penalty_to_delete = st.selectbox(
+                "Strafe",
+                penalties['id'].tolist(),
+                format_func=lambda x: f"{penalties[penalties['id']==x]['date'].iloc[0]} - {penalties[penalties['id']==x]['player'].iloc[0]}"
+            )
+            
+            if st.button("Löschen", type="secondary"):
+                if execute_query("DELETE FROM penalty WHERE id = ?", (penalty_to_delete,)):
+                    st.success("Strafe gelöscht!")
+                    st.rerun()
+    else:
+        st.info("Keine Strafen gefunden.")
+
+def statistics():
+    """Statistics"""
+    st.title("📈 Statistiken")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        date_from = st.date_input("Von", value=date.today() - timedelta(days=90))
+    with col2:
+        date_to = st.date_input("Bis", value=date.today())
+    
+    # Period stats
+    period_stats = get_data("""
+        SELECT COUNT(*) as count, COALESCE(SUM(pt.amount * p.quantity), 0) as total
+        FROM penalty p
+        JOIN penalty_type pt ON p.penalty_type_id = pt.id
+        WHERE p.date BETWEEN ? AND ?
+    """, (date_from, date_to))
+    
+    if not period_stats.empty:
+        count = int(period_stats['count'].iloc[0])
+        total = float(period_stats['total'].iloc[0])
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Strafen", count)
+        with col2:
+            st.metric("Betrag", f"€{total:.2f}")
+        with col3:
+            avg = total / count if count > 0 else 0
+            st.metric("Ø pro Strafe", f"€{avg:.2f}")
+        with col4:
+            days = (date_to - date_from).days + 1
+            daily_avg = total / days if days > 0 else 0
+            st.metric("Ø täglich", f"€{daily_avg:.2f}")
+    
+    # Charts
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.subheader("Spieler Statistiken")
+        player_stats = get_data("""
+            SELECT pl.name, SUM(pt.amount * p.quantity) as total
+            FROM player pl
+            JOIN penalty p ON pl.id = p.player_id
+            JOIN penalty_type pt ON p.penalty_type_id = pt.id
+            WHERE p.date BETWEEN ? AND ?
+            GROUP BY pl.id, pl.name
+            ORDER BY total DESC
+            LIMIT 10
+        """, (date_from, date_to))
+        
+        if not player_stats.empty:
+            fig = px.bar(player_stats, x='name', y='total')
+            fig.update_xaxes(tickangle=45)
+            st.plotly_chart(fig, use_container_width=True)
+    
+    with col2:
+        st.subheader("Vergehen Statistiken")
+        penalty_stats = get_data("""
+            SELECT pt.name, SUM(pt.amount * p.quantity) as total
+            FROM penalty_type pt
+            JOIN penalty p ON pt.id = p.penalty_type_id
+            WHERE p.date BETWEEN ? AND ?
+            GROUP BY pt.id, pt.name
+            ORDER BY total DESC
+            LIMIT 10
+        """, (date_from, date_to))
+        
+        if not penalty_stats.empty:
+            fig = px.bar(penalty_stats, x='name', y='total')
+            fig.update_xaxes(tickangle=45)
+            st.plotly_chart(fig, use_container_width=True)
 
 def manage_players():
-    """Manage players page"""
+    """Manage players"""
     st.title("👥 Spieler verwalten")
     
     if st.session_state.user_role != 'kassier':
-        st.error("❌ Keine Berechtigung für diese Aktion.")
+        st.error("Keine Berechtigung.")
         return
     
-    try:
-        # Add new player
-        st.subheader("➕ Neuer Spieler")
-        with st.form("add_player_form"):
-            new_player_name = st.text_input("Spielername")
-            submitted = st.form_submit_button("✅ Spieler hinzufügen")
-            
-            if submitted and new_player_name.strip():
-                try:
-                    result = execute_query("INSERT INTO player (name) VALUES (?)", (new_player_name.strip(),))
-                    if result is not None:
-                        st.success("✅ Spieler erfolgreich hinzugefügt!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Fehler beim Hinzufügen des Spielers!")
-                except Exception as e:
-                    if "UNIQUE constraint failed" in str(e):
-                        st.error("❌ Spieler existiert bereits!")
-                    else:
-                        st.error(f"❌ Fehler: {str(e)}")
-        
-        # List existing players
-        st.subheader("📋 Bestehende Spieler")
-        players = get_data("SELECT id, name FROM player ORDER BY name")
-        
-        if not players.empty:
-            st.dataframe(players, use_container_width=True, hide_index=True)
-            
-            # Delete player
-            st.subheader("🗑️ Spieler löschen")
-            st.warning("⚠️ Das Löschen eines Spielers entfernt auch alle seine Strafen!")
-            
-            player_options = dict(zip(players['id'], players['name']))
-            player_to_delete = st.selectbox(
-                "Spieler auswählen",
-                options=players['id'].tolist(),
-                format_func=lambda x: player_options[x]
-            )
-            
-            if st.button("🗑️ Spieler löschen", type="secondary"):
-                try:
-                    # Delete penalties first, then player
-                    execute_query("DELETE FROM penalty WHERE player_id = ?", (player_to_delete,))
-                    result = execute_query("DELETE FROM player WHERE id = ?", (player_to_delete,))
-                    if result is not None:
-                        st.success("✅ Spieler und alle zugehörigen Strafen wurden gelöscht!")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Fehler beim Löschen: {str(e)}")
-        else:
-            st.info("ℹ️ Keine Spieler vorhanden.")
-            
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Spielerverwaltung: {str(e)}")
+    # Add player
+    st.subheader("Neuer Spieler")
+    with st.form("add_player"):
+        name = st.text_input("Name")
+        if st.form_submit_button("Hinzufügen"):
+            if name.strip():
+                result = execute_query("INSERT INTO player (name) VALUES (?)", (name.strip(),))
+                if result:
+                    st.success("Spieler hinzugefügt!")
+                    st.rerun()
+    
+    # List players
+    st.subheader("Spieler")
+    players = get_data("SELECT id, name FROM player ORDER BY name")
+    if not players.empty:
+        st.dataframe(players, use_container_width=True)
 
 def manage_penalty_types():
-    """Manage penalty types page"""
+    """Manage penalty types"""
     st.title("⚖️ Vergehen verwalten")
     
     if st.session_state.user_role != 'kassier':
-        st.error("❌ Keine Berechtigung für diese Aktion.")
+        st.error("Keine Berechtigung.")
         return
     
-    try:
-        # Add new penalty type
-        st.subheader("➕ Neues Vergehen")
-        with st.form("add_penalty_type_form"):
-            col1, col2 = st.columns(2)
-            with col1:
-                new_penalty_name = st.text_input("Vergehen")
-                new_penalty_amount = st.number_input("Betrag (€)", min_value=0.0, step=0.5)
-            with col2:
-                new_penalty_description = st.text_area("Beschreibung (optional)")
-            
-            submitted = st.form_submit_button("✅ Vergehen hinzufügen")
-            
-            if submitted and new_penalty_name.strip():
-                try:
-                    result = execute_query("INSERT INTO penalty_type (name, amount, description) VALUES (?, ?, ?)", 
-                                        (new_penalty_name.strip(), new_penalty_amount, new_penalty_description.strip()))
-                    if result is not None:
-                        st.success("✅ Vergehen erfolgreich hinzugefügt!")
-                        st.rerun()
-                    else:
-                        st.error("❌ Fehler beim Hinzufügen des Vergehens!")
-                except Exception as e:
-                    if "UNIQUE constraint failed" in str(e):
-                        st.error("❌ Vergehen existiert bereits!")
-                    else:
-                        st.error(f"❌ Fehler: {str(e)}")
+    # Add penalty type
+    st.subheader("Neues Vergehen")
+    with st.form("add_penalty_type"):
+        col1, col2 = st.columns(2)
+        with col1:
+            name = st.text_input("Vergehen")
+            amount = st.number_input("Betrag (€)", min_value=0.0, step=0.5)
+        with col2:
+            description = st.text_area("Beschreibung")
         
-        # List existing penalty types
-        st.subheader("📋 Bestehende Vergehen")
-        penalty_types = get_data("SELECT id, name, amount, description FROM penalty_type ORDER BY name")
-        
-        if not penalty_types.empty:
-            st.dataframe(penalty_types, use_container_width=True, hide_index=True)
-        else:
-            st.info("ℹ️ Keine Vergehen vorhanden.")
-            
-    except Exception as e:
-        st.error(f"Fehler beim Laden der Vergehen-Verwaltung: {str(e)}")
+        if st.form_submit_button("Hinzufügen"):
+            if name.strip():
+                result = execute_query("INSERT INTO penalty_type (name, amount, description) VALUES (?, ?, ?)", 
+                                     (name.strip(), amount, description.strip()))
+                if result:
+                    st.success("Vergehen hinzugefügt!")
+                    st.rerun()
+    
+    # List penalty types
+    st.subheader("Vergehen")
+    penalty_types = get_data("SELECT id, name, amount, description FROM penalty_type ORDER BY name")
+    if not penalty_types.empty:
+        st.dataframe(penalty_types, use_container_width=True)
 
 def export_data():
-    """Export data to CSV"""
-    st.title("📤 Daten exportieren")
+    """Export data"""
+    st.title("📤 Export")
     
     if st.session_state.user_role != 'kassier':
-        st.error("❌ Keine Berechtigung für diese Aktion.")
+        st.error("Keine Berechtigung.")
         return
     
-    try:
-        # Get all penalty data
-        penalties = get_data("""
-            SELECT p.date, pl.name as player, pt.name as penalty_type, 
-                   p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
-            FROM penalty p
-            JOIN player pl ON p.player_id = pl.id
-            JOIN penalty_type pt ON p.penalty_type_id = pt.id
-            ORDER BY p.date DESC
-        """)
+    penalties = get_data("""
+        SELECT p.date, pl.name as player, pt.name as penalty_type, 
+               p.quantity, pt.amount, (pt.amount * p.quantity) as total, p.notes
+        FROM penalty p
+        JOIN player pl ON p.player_id = pl.id
+        JOIN penalty_type pt ON p.penalty_type_id = pt.id
+        ORDER BY p.date DESC
+    """)
+    
+    if not penalties.empty:
+        csv_buffer = io.StringIO()
+        penalties.to_csv(csv_buffer, index=False, sep=';')
+        csv_data = csv_buffer.getvalue()
         
-        if not penalties.empty:
-            # Convert to CSV
-            csv_buffer = io.StringIO()
-            penalties.to_csv(csv_buffer, index=False, sep=';', encoding='utf-8')
-            csv_data = csv_buffer.getvalue()
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="📥 CSV herunterladen",
-                    data=csv_data,
-                    file_name=f"penalty_export_{date.today().strftime('%Y%m%d')}.csv",
-                    mime="text/csv",
-                    type="primary"
-                )
-            
-            with col2:
-                st.metric("Datensätze", len(penalties))
-            
-            st.subheader("📊 Vorschau")
-            st.dataframe(penalties.head(20), use_container_width=True, hide_index=True)
-            st.info(f"ℹ️ Gefunden: {len(penalties)} Strafen")
-        else:
-            st.info("ℹ️ Keine Daten zum Exportieren vorhanden.")
-            
-    except Exception as e:
-        st.error(f"Fehler beim Exportieren: {str(e)}")
+        st.download_button(
+            "CSV herunterladen",
+            csv_data,
+            f"penalty_export_{date.today().strftime('%Y%m%d')}.csv",
+            "text/csv"
+        )
+        
+        st.dataframe(penalties.head(20), use_container_width=True)
+        st.info(f"Datensätze: {len(penalties)}")
+    else:
+        st.info("Keine Daten vorhanden.")
 
 def main():
-    """Main application"""
+    """Main app"""
     # Initialize database
     if not init_database():
-        st.error("❌ Datenbank konnte nicht initialisiert werden!")
+        st.error("Datenbankfehler!")
         return
     
-    # Authentication check
+    # Check authentication
     if not st.session_state.authenticated:
-        authenticate()
+        login_page()
         return
     
-    # Sidebar navigation
+    # Sidebar
     with st.sidebar:
         st.title("🏆 ASV Natz")
-        st.markdown(f"**Angemeldet als:** {st.session_state.user_role.title()}")
+        st.markdown(f"**{st.session_state.user_role.title()}**")
         
-        if st.button("👋 Abmelden", type="secondary", use_container_width=True):
-            logout()
-            return
+        if st.button("Abmelden", use_container_width=True):
+            st.session_state.authenticated = False
+            st.session_state.user_role = None
+            st.rerun()
         
         st.markdown("---")
         
-        # Navigation
+        # Pages
         pages = {
             "📊 Dashboard": dashboard,
             "📋 Strafen anzeigen": view_penalties,
@@ -829,24 +644,17 @@ def main():
                 "➕ Strafe hinzufügen": add_penalty,
                 "👥 Spieler verwalten": manage_players,
                 "⚖️ Vergehen verwalten": manage_penalty_types,
-                "📤 Daten exportieren": export_data
+                "📤 Export": export_data
             })
         
-        # Create navigation
-        selected_page = st.selectbox("📍 Navigation", list(pages.keys()), label_visibility="collapsed")
+        selected = st.selectbox("Navigation", list(pages.keys()))
         
         st.markdown("---")
-        st.caption("ASV Natz Penalty Tracker v2.0")
+        st.caption("ASV Natz Penalty Tracker")
     
-    # Execute selected page
-    try:
-        if selected_page in pages:
-            pages[selected_page]()
-        else:
-            st.error("❌ Seite nicht gefunden!")
-    except Exception as e:
-        st.error(f"❌ Unerwarteter Fehler: {str(e)}")
-        st.exception(e)
+    # Execute page
+    if selected in pages:
+        pages[selected]()
 
 if __name__ == "__main__":
     main()

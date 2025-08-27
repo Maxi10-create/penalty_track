@@ -49,13 +49,13 @@ args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export
 name = "Streamlit App"
 author = "agent"
 
-[workflows.workflow.metadata]
-outputType = "webview"
-
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "streamlit run streamlit_app.py --server.port 5000 --server.address 0.0.0.0 --server.fileWatcherType none --server.headless true"
+args = "streamlit run streamlit_app.py --server.port 5000 --server.address 0.0.0.0 --server.headless true"
 waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
 
 [[ports]]
 localPort = 5000

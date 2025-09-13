@@ -16,42 +16,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Penalty Tracker Setup"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "penalty_tracker"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Streamlit App"
+args = "Flask App"
 
 [[workflows.workflow]]
-name = "Penalty Tracker Setup"
+name = "Flask App"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export_csv.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
-
-[[workflows.workflow]]
-name = "penalty_tracker"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "pip install openpyxl>=3.1 && python build_strafenlog.py && python export_csv.py"
-
-[[workflows.workflow]]
-name = "Streamlit App"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run streamlit_app.py --server.port 5000 --server.address 0.0.0.0 --server.headless true"
+args = "python app.py"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -61,6 +34,11 @@ outputType = "webview"
 localPort = 5000
 externalPort = 80
 
+[[ports]]
+localPort = 41693
+externalPort = 3000
+
 [deployment]
-deploymentTarget = "static"
+deploymentTarget = "autoscale"
 publicDir = "public"
+run = ["python", "app.py"]

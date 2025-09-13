@@ -1,0 +1,203 @@
+Alles klar ✅ — hier ist ein fertiger Prompt, den du in Replit (oder einem anderen AI-Coder dort) einfügen kannst. Er führt alle nötigen Änderungen in deinem GitHub-Repo penalty_track durch, damit du mit Streamlit Cloud + Neon Postgres und automatischen Backups sofort startklar bist.
+
+⸻
+
+🔹 Replit Prompt zum Kopieren
+
+Bitte 1:1 kopieren und in Replit als Prompt einfügen:
+
+⸻
+
+Arbeite im GitHub-Repo
+https://github.com/Maxi10-create/penalty_track
+
+und führe folgende Änderungen durch, damit es kostenlos auf Streamlit Community Cloud mit Neon Postgres läuft:
+
+⸻
+
+1) Dependencies
+	•	Erstelle im Root eine Datei requirements.txt mit genau folgendem Inhalt:
+
+streamlit
+sqlalchemy
+psycopg2-binary
+
+
+
+⸻
+
+2) Datenbank-Anbindung
+	•	Öffne streamlit_app.py.
+	•	Ersetze den bisherigen DB-Code durch diesen Block (falls schon vorhanden, bitte ersetzen/ergänzen):
+
+import os, streamlit as st
+from sqlalchemy import create_engine, text
+
+st.set_page_config(page_title="Penalty Tracker", page_icon="📦", layout="centered")
+
+# DB-Verbindung: erst Secrets, dann Env, sonst lokale SQLite
+DB_URL = st.secrets.get("DB_URL") or os.getenv("DB_URL") or "sqlite:///./local_dev.db"
+engine = create_engine(DB_URL, pool_pre_ping=True)
+
+# Tabelle anlegen (idempotent)
+INIT_SQL = """
+CREATE TABLE IF NOT EXISTS entries(
+  id bigserial PRIMARY KEY,
+  name text NOT NULL,
+  value text NOT NULL,
+  ts timestamptz DEFAULT CURRENT_TIMESTAMP
+);
+"""
+with engine.begin() as conn:
+    conn.execute(text(INIT_SQL))
+
+st.title("📦 Penalty Tracker")
+name = st.text_input("Name")
+value = st.text_area("Wert")
+
+if st.button("Speichern", type="primary") and name and value:
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO entries(name, value) VALUES (:n, :v)"),
+                     {"n": name, "v": value})
+    st.success("Gespeichert!")
+
+st.subheader("Letzte Einträge")
+with engine.begin() as conn:
+    rows = conn.execute(text("SELECT name, value, ts FROM entries ORDER BY ts DESC LIMIT 100")).all()
+for r in rows:
+    st.write(f"**{r.name}** – {r.value}")
+    st.caption(str(r.ts))
+
+
+⸻
+
+3) Lokale DB-Dateien entfernen
+	•	Lösche penalty_tracker.db oder andere .db-Dateien aus dem Repo.
+	•	Erstelle/ergänze .gitignore im Root mit:
+
+*.db
+.streamlit/secrets.toml
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+
+
+⸻
+
+4) Secrets dokumentieren
+	•	Lege .streamlit/README_SECRETS.md an mit folgendem Inhalt:
+
+# Streamlit Secrets
+
+In Streamlit Cloud unter **App → Settings → Secrets** diesen Eintrag setzen:
+
+DB_URL=“postgresql+psycopg2://USER:PASSWORD@HOST/DBNAME?sslmode=require&channel_binding=require”
+
+👉 Dein aktueller Wert lautet (Neon):
+
+DB_URL=“postgresql+psycopg2://neondb_owner:npg_K3BEifdF1vhb@ep-holy-water-agmrkgvp-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require”
+
+**Achtung:** Secrets niemals ins Repo committen!
+
+
+⸻
+
+5) GitHub Actions: Backup
+	•	Erstelle Datei .github/workflows/db-backup.yml mit:
+
+name: Daily DB Backup
+on:
+  schedule:
+    - cron: "0 2 * * *"   # täglich 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Parse DB_URL -> pg env
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          python - <<'PY'
+import os, re, sys
+url=os.environ.get('DB_URL','')
+m=re.match(r'.*://([^:]+):([^@]+)@([^/:]+)(?::\d+)?/([^?]+)', url)
+if not m:
+    print("DB_URL parse error", file=sys.stderr); sys.exit(1)
+user, pwd, host, db = m.group(1), m.group(2), m.group(3), m.group(4)
+open("db.env","w").write(f"PGUSER={user}\nPGPASSWORD={pwd}\nPGHOST={host}\nPGDATABASE={db}\n")
+PY
+          set -a && source db.env && set +a
+          pg_dump -F c -Z 9 -f backup.dump
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.dump
+
+
+⸻
+
+6) GitHub Actions: Keep-Warm (optional)
+	•	Erstelle Datei .github/workflows/ping.yml mit:
+
+name: Daily Ping
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit Streamlit app once
+        run: curl -sS -m 20 https://maxi10-create-penalty-track.streamlit.app/ || true
+
+
+⸻
+
+7) README erweitern
+	•	Ergänze am Ende von README.md:
+
+## Deployment (kostenlos)
+
+1. **Streamlit Cloud**: Repo verknüpfen, Entry-File `streamlit_app.py` wählen.
+2. **Secrets**: In Streamlit Cloud Settings:
+
+DB_URL=“postgresql+psycopg2://…”
+
+3. **GitHub Actions**: In Repo Settings → Secrets → Actions: `DB_URL` mit demselben Wert anlegen.
+4. **Backups**: Täglich via GitHub Action (`db-backup.yml`).
+5. **Keep-Warm** (optional): `ping.yml` ruft App täglich auf.
+
+
+⸻
+
+8) Commit & PR
+	•	Lege Branch infra/streamlit-neon-setup an, commite alles und öffne eine PR.
+	•	PR-Titel: Add Streamlit Cloud + Neon setup with backups and secrets.
+
+⸻
+
+✅ Akzeptanzkriterien
+	•	requirements.txt vorhanden
+	•	streamlit_app.py nutzt st.secrets["DB_URL"]
+	•	.gitignore schützt .db & Secrets
+	•	.github/workflows/db-backup.yml + ping.yml vorhanden
+	•	README.md dokumentiert Deploy
+	•	.streamlit/README_SECRETS.md erklärt Secrets
+
+⸻
+
+👉 Das ist dein kompletter Prompt für Replit.
+
+⸻
+
+Willst du, dass ich dir zusätzlich noch den fertigen Commit-Diff (git patch) schreibe, den du direkt anwenden kannst, anstatt die Änderungen manuell einzugeben?

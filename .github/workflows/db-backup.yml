@@ -1,0 +1,34 @@
+name: Daily DB Backup
+on:
+  schedule:
+    - cron: "0 2 * * *"   # täglich 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Parse DB_URL -> pg env
+        env:
+          DB_URL: ${{ secrets.DB_URL }}
+        run: |
+          python - <<'PY'
+import os, re, sys
+url=os.environ.get('DB_URL','')
+m=re.match(r'.*://([^:]+):([^@]+)@([^/:]+)(?::\d+)?/([^?]+)', url)
+if not m:
+    print("DB_URL parse error", file=sys.stderr); sys.exit(1)
+user, pwd, host, db = m.group(1), m.group(2), m.group(3), m.group(4)
+open("db.env","w").write(f"PGUSER={user}\nPGPASSWORD={pwd}\nPGHOST={host}\nPGDATABASE={db}\n")
+PY
+          set -a && source db.env && set +a
+          pg_dump -F c -Z 9 -f backup.dump
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backup.dump

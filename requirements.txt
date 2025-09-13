@@ -1,0 +1,9 @@
+streamlit
+sqlalchemy
+psycopg2-binary
+flask
+flask-sqlalchemy
+openpyxl
+psycopg2-binary
+sqlalchemy
+streamlit

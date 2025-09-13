@@ -4,3 +4,8 @@ __pycache__/
 env/
 *.log
 .DS_Store
+
+# Database files
+*.db
+.streamlit/secrets.toml
+.pytest_cache/

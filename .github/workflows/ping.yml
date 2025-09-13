@@ -1,0 +1,12 @@
+name: Daily Ping
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Hit Streamlit app once
+        run: curl -sS -m 20 https://maxi10-create-penalty-track.streamlit.app/ || true

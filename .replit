@@ -16,15 +16,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Flask App"
+args = "Streamlit App"
 
 [[workflows.workflow]]
-name = "Flask App"
+name = "Streamlit App"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python app.py"
+args = "streamlit run streamlit_app.py --server.address 0.0.0.0 --server.port 5000"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -35,7 +35,7 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 39981
+localPort = 36301
 externalPort = 3001
 
 [[ports]]

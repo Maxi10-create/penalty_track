@@ -9,3 +9,10 @@ env/
 *.db
 .streamlit/secrets.toml
 .pytest_cache/
+
+*.db
+.streamlit/secrets.toml
+__pycache__/
+.pytest_cache/
+.DS_Store
+

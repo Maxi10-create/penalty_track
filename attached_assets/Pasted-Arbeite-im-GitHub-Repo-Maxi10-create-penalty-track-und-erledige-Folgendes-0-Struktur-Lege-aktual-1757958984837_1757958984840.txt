@@ -1,0 +1,665 @@
+Arbeite im GitHub-Repo Maxi10-create/penalty_track und erledige Folgendes:
+
+0) Struktur
+
+Lege/aktualisiere diese Dateien:
+
+index.html (Root)
+
+app.js
+
+styles.css
+
+apps_script/Code.gs (nur als Referenzdatei; ich kopiere den Code in Google Apps Script! – trotzdem ins Repo legen)
+
+README.md (Metadaten + Kurzusage)
+
+.gitignore
+
+1) index.html
+
+Erzeuge eine statische App mit Startscreen (Rollenwahl) und 4 Tabs. Nutze Chart.js via CDN. Lese Konfiguration (API URL, API Key, Admin Key) aus einer kleinen „⚙️ Konfig“-Sektion wie zuvor (localStorage). Rolle (Spieler/Admin) ebenfalls in localStorage.
+
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Penalty Track</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>📦 Penalty Track</h1>
+    <div class="cfg">
+      <details>
+        <summary>⚙️ Konfiguration</summary>
+        <label>API URL (Apps Script /exec)
+          <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+        </label>
+        <label>API Key (alle)
+          <input id="apiKey" placeholder="API Key" />
+        </label>
+        <label>Admin Key (nur Admin)
+          <input id="adminKey" placeholder="Admin Key" />
+        </label>
+        <button id="saveCfg">Speichern</button>
+        <button id="clearCfg" class="secondary">Zurücksetzen</button>
+      </details>
+      <span class="roleTag" id="roleTag">Rolle: –</span>
+    </div>
+  </header>
+
+  <!-- Startscreen -->
+  <section id="screenRole" class="card">
+    <h2>Wer bist du?</h2>
+    <div class="row">
+      <button id="btnPlayer" class="primary">👤 Spieler</button>
+      <div class="adminBox">
+        <input id="adminPwd" type="password" placeholder="Admin-Passwort" />
+        <button id="btnAdmin" class="secondary">🛡️ Admin</button>
+        <p class="muted">Admin-Passwort: <code>admin2024</code></p>
+      </div>
+    </div>
+    <p class="muted">Spieler: nur klicken (intern fest „2024“).</p>
+  </section>
+
+  <!-- Tabs -->
+  <nav id="tabs" class="tabs hidden">
+    <button data-tab="tab1" class="active">1) Dashboard</button>
+    <button data-tab="tab2">2) Strafen (Spieler)</button>
+    <button data-tab="tab3" id="tab3btn" class="adminOnly">3) Strafenerfassung</button>
+    <button data-tab="tab4" id="tab4btn" class="adminOnly">4) Stammdaten</button>
+  </nav>
+
+  <!-- Tab 1: Dashboard -->
+  <section id="tab1" class="tab card hidden">
+    <h2>Dashboard</h2>
+    <div class="row">
+      <div class="card">
+        <h3>Pott (Summe €)</h3>
+        <div id="pott" class="kpi">0 €</div>
+      </div>
+      <div class="card">
+        <h3>Top 3 Spieler (Summe €)</h3>
+        <ol id="top3"></ol>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Akkumulierte Strafen über Zeit</h3>
+      <canvas id="chart"></canvas>
+    </div>
+  </section>
+
+  <!-- Tab 2: Detail by Spieler -->
+  <section id="tab2" class="tab card hidden">
+    <h2>Strafen pro Spieler</h2>
+    <label>Spieler wählen
+      <select id="filterPlayer"></select>
+    </label>
+    <table class="table">
+      <thead>
+        <tr><th>Datum</th><th>Spieler</th><th>Vergehen</th><th>Betrag (€)</th></tr>
+      </thead>
+      <tbody id="detailBody"></tbody>
+    </table>
+  </section>
+
+  <!-- Tab 3: Erfassung (Admin) -->
+  <section id="tab3" class="tab card hidden">
+    <h2>Strafenerfassung (Admin)</h2>
+    <div class="row">
+      <label>Spieler (Mehrfachauswahl)
+        <select id="entryPlayers" multiple size="6"></select>
+      </label>
+      <label>Strafe (aus Stammdaten)
+        <select id="entryFine"></select>
+      </label>
+    </div>
+    <div class="row">
+      <label>Zeitstempel
+        <input id="entryTs" type="datetime-local" />
+      </label>
+    </div>
+    <button id="saveEntry" class="primary">➕ Speichern</button>
+    <div id="msgEntry" class="muted"></div>
+  </section>
+
+  <!-- Tab 4: Stammdaten (Admin) -->
+  <section id="tab4" class="tab card hidden">
+    <h2>Stammdaten (Admin)</h2>
+
+    <div class="row">
+      <div class="card flex1">
+        <h3>Spieler</h3>
+        <div class="row">
+          <input id="playerName" placeholder="Neuer/zu ändernder Spielername" />
+          <button id="addPlayer" class="primary">Speichern/Upsert</button>
+        </div>
+        <ul id="playersList"></ul>
+      </div>
+
+      <div class="card flex1">
+        <h3>Strafen (Vergehen & Betrag €)</h3>
+        <div class="row">
+          <input id="fineName" placeholder="Vergehen" />
+          <input id="fineAmount" placeholder="Betrag (€)" type="number" step="0.01" />
+          <button id="addFine" class="primary">Speichern/Upsert</button>
+        </div>
+        <ul id="finesList"></ul>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
+2) styles.css
+
+Schlichtes, responsives Styling.
+
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#111}
+h1{margin:0 0 8px}
+header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:10px}
+.card{border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0;background:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.flex1{flex:1}
+label{display:block;font-weight:600;margin-top:8px}
+input,select,button{font:inherit}
+input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
+button{padding:10px 14px;border:0;border-radius:10px;background:#0d6efd;color:#fff;font-weight:600;cursor:pointer}
+button.secondary{background:#6c757d}
+button.danger{background:#b3261e}
+.muted{color:#666}
+.kpi{font-size:2rem;font-weight:800}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid #eee;padding:8px;text-align:left}
+.tabs{display:flex;gap:8px;margin:10px 0}
+.tabs button{background:#e2e8f0;color:#111}
+.tabs button.active{background:#0d6efd;color:#fff}
+.hidden{display:none}
+.cfg summary{cursor:pointer}
+.roleTag{margin-left:8px;font-weight:700}
+.adminOnly{display:none}
+.adminBox{display:flex;gap:6px;align-items:center}
+
+3) app.js
+
+Implementiere:
+
+Konfig (API URL/Key/AdminKey) in localStorage.
+
+Rollenwahl: Spieler-Button → akzeptiert sofort (intern PLAYER_PWD = "2024"), Admin verlangt Eingabe admin2024.
+
+API-Client (GET/POST) wie zuvor (Query apiKey).
+
+Sheets-Modelle: Drei Tabellen: Daten (entries), Players, Fines.
+
+Tab 1 Dashboard: Summe €, Top-3, Chart (kumulierte Summe über Zeit).
+
+Tab 2: Dropdown Spieler → detailierte Liste aus Daten.
+
+Tab 3: Multi-Spieler + Strafe + Zeit → pro Spieler ein Eintrag (POST).
+
+Tab 4: Upsert/Löschen von Spielern & Strafen.
+
+// app.js
+const LS = { api:'pt_api', key:'pt_key', adm:'pt_adm', role:'pt_role' };
+const PLAYER_PWD = "2024";
+const ADMIN_PWD  = "admin2024";
+
+let chart; // Chart.js instance
+
+// ---------- Config ----------
+const byId = id => document.getElementById(id);
+function loadCfg(){
+  byId('apiUrl').value = localStorage.getItem(LS.api) || '';
+  byId('apiKey').value = localStorage.getItem(LS.key) || '';
+  byId('adminKey').value = localStorage.getItem(LS.adm) || '';
+  updateRoleTag();
+}
+function saveCfg(){
+  localStorage.setItem(LS.api, byId('apiUrl').value.trim());
+  localStorage.setItem(LS.key, byId('apiKey').value.trim());
+  localStorage.setItem(LS.adm, byId('adminKey').value.trim());
+  updateRoleTag();
+}
+function clearCfg(){
+  localStorage.removeItem(LS.api);
+  localStorage.removeItem(LS.key);
+  localStorage.removeItem(LS.adm);
+  updateRoleTag();
+}
+function updateRoleTag(){
+  const role = localStorage.getItem(LS.role) || '–';
+  byId('roleTag').textContent = `Rolle: ${role}`;
+  const isAdmin = role === 'Admin';
+  document.querySelectorAll('.adminOnly').forEach(el => el.style.display = isAdmin ? '' : 'none');
+}
+
+// ---------- Role Screen ----------
+function showApp(){
+  byId('screenRole').classList.add('hidden');
+  byId('tabs').classList.remove('hidden');
+  switchTab('tab1');
+}
+byId('btnPlayer').onclick = () => {
+  // Spieler: "nur klicken" (internes PW, kein Prompt)
+  localStorage.setItem(LS.role, 'Spieler'); updateRoleTag(); showApp();
+};
+byId('btnAdmin').onclick = () => {
+  const pwd = byId('adminPwd').value.trim();
+  if (pwd !== ADMIN_PWD) { alert('Falsches Admin-Passwort'); return; }
+  localStorage.setItem(LS.role, 'Admin'); updateRoleTag(); showApp();
+};
+
+// ---------- Tabs ----------
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.onclick = ()=> switchTab(b.dataset.tab);
+});
+function switchTab(id){
+  document.querySelectorAll('.tab').forEach(s=> s.classList.add('hidden'));
+  document.querySelectorAll('#tabs button').forEach(b=> b.classList.remove('active'));
+  byId(id).classList.remove('hidden');
+  document.querySelector(`#tabs button[data-tab="${id}"]`).classList.add('active');
+  if (id==='tab1') refreshDashboard();
+  if (id==='tab2') refreshDetail();
+  if (id==='tab3') loadStammdatenIntoEntry();
+  if (id==='tab4') refreshStammdaten();
+}
+
+// ---------- API ----------
+function getCfg(){
+  const api = (localStorage.getItem(LS.api)||'').trim();
+  const key = (localStorage.getItem(LS.key)||'').trim();
+  if (!api || !key) throw new Error('Konfiguration unvollständig');
+  return {api,key,adm:(localStorage.getItem(LS.adm)||'').trim()};
+}
+async function apiGet(params={}){
+  const {api,key} = getCfg();
+  const u = new URL(api);
+  u.searchParams.set('apiKey', key);
+  Object.entries(params).forEach(([k,v])=> u.searchParams.set(k, v));
+  const r = await fetch(u.toString());
+  if(!r.ok) throw new Error('GET '+r.status);
+  return r.json();
+}
+async function apiPost(payload){
+  const {api,key} = getCfg();
+  const body = { ...payload, apiKey:key };
+  const r = await fetch(api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+  if(!r.ok) throw new Error('POST '+r.status);
+  return r.json();
+}
+async function apiAdmin(action, payload){
+  const {api,key,adm} = getCfg();
+  const body = { action, apiKey:key, adminKey:adm, ...payload };
+  const r = await fetch(api + `?action=${encodeURIComponent(action)}`, {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error(action+' '+r.status);
+  return r.json();
+}
+
+// ---------- Data helpers ----------
+function parseAmount(e){ // entry row -> amount number
+  const x = Number(e.amount ?? e.betrag ?? e.value ?? 0);
+  return Number.isFinite(x) ? x : 0;
+}
+function fmtDate(iso){ try{return new Date(iso).toLocaleString();}catch{return iso;} }
+
+// ---------- Dashboard (Tab1) ----------
+async function refreshDashboard(){
+  try{
+    const data = await apiGet({ view:'all' }); // returns {ok, rows, players, fines}
+    if(!data.ok) throw new Error(data.error||'API-Fehler');
+    const rows = (data.rows||[]).map(r=> ({...r, amount: Number(r.amount||r.betrag||r.value||0)}));
+
+    // Pott
+    const sum = rows.reduce((a,r)=> a + (Number(r.amount)||0), 0);
+    byId('pott').textContent = `${sum.toFixed(2)} €`;
+
+    // Top 3 Spieler
+    const perPlayer = {};
+    rows.forEach(r=>{
+      const k = r.name || r.player || '';
+      perPlayer[k] = (perPlayer[k]||0) + (Number(r.amount)||0);
+    });
+    const top = Object.entries(perPlayer).sort((a,b)=> b[1]-a[1]).slice(0,3);
+    const ol = byId('top3'); ol.innerHTML='';
+    top.forEach(([n,amt])=>{
+      const li = document.createElement('li'); li.textContent = `${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);
+    });
+
+    // Chart: kumulierte Summe über Zeit
+    const pts = rows
+      .map(r=> ({ t: new Date(r.ts || r.time || Date.now()), v: Number(r.amount)||0 }))
+      .sort((a,b)=> a.t - b.t);
+    let cum=0; const labels=[], values=[];
+    pts.forEach(p=>{ cum += p.v; labels.push(p.t.toLocaleDateString()); values.push(cum); });
+    renderChart(labels, values);
+  }catch(e){ console.error(e); }
+}
+function renderChart(labels, values){
+  const ctx = byId('chart').getContext('2d');
+  if(chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ label:'Akkumuliert (€)', data: values, fill:false }] },
+    options:{ responsive:true, plugins:{ legend:{ display:true } } }
+  });
+}
+
+// ---------- Detail (Tab2) ----------
+async function refreshDetail(){
+  try{
+    const data = await apiGet({ view:'all' });
+    if(!data.ok) throw new Error(data.error||'API-Fehler');
+    const players = data.players || [];
+    const rows = data.rows || [];
+
+    // Spieler-Dropdown
+    const sel = byId('filterPlayer'); sel.innerHTML = '';
+    players.forEach(p=>{
+      const o = document.createElement('option'); o.value = p.name; o.textContent = p.name; sel.appendChild(o);
+    });
+    sel.onchange = ()=> fillDetail(rows, sel.value);
+    if(players[0]) fillDetail(rows, players[0].name);
+  }catch(e){ console.error(e); }
+}
+function fillDetail(rows, name){
+  const body = byId('detailBody'); body.innerHTML='';
+  rows.filter(r=> (r.name||'')===name).sort((a,b)=> String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${fmtDate(r.ts)}</td><td>${r.name}</td><td>${r.fine||r.offense||r.value}</td><td>${Number(r.amount||0).toFixed(2)}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+// ---------- Erfassung (Tab3, Admin) ----------
+async function loadStammdatenIntoEntry(){
+  if ((localStorage.getItem(LS.role)||'') !== 'Admin') return;
+  try{
+    const data = await apiGet({ view:'meta' }); // players,fines
+    if(!data.ok) throw new Error(data.error||'API-Fehler');
+    const players = data.players||[], fines = data.fines||[];
+    const selP = byId('entryPlayers'); selP.innerHTML='';
+    players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o); });
+    const selF = byId('entryFine'); selF.innerHTML='';
+    fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${Number(f.amount||0).toFixed(2)} €)`; o.dataset.amount = Number(f.amount||0); selF.appendChild(o); });
+  }catch(e){ console.error(e); }
+}
+byId('saveEntry').onclick = async ()=>{
+  try{
+    const selP = Array.from(byId('entryPlayers').selectedOptions).map(o=> o.value);
+    const fineOpt = byId('entryFine').selectedOptions[0];
+    const fineName = fineOpt?.value || '';
+    const amount = Number(fineOpt?.dataset.amount || 0);
+    const ts = byId('entryTs').value ? new Date(byId('entryTs').value).toISOString() : new Date().toISOString();
+    if(!selP.length || !fineName){ throw new Error('Bitte Spieler und Strafe wählen'); }
+    // pro Spieler ein POST
+    for(const name of selP){
+      await apiPost({ name, fine: fineName, amount, ts });
+    }
+    byId('msgEntry').textContent = 'Gespeichert.';
+    setTimeout(()=> byId('msgEntry').textContent='', 1500);
+  }catch(e){ alert(e.message||'Fehler'); }
+};
+
+// ---------- Stammdaten (Tab4, Admin) ----------
+async function refreshStammdaten(){
+  if ((localStorage.getItem(LS.role)||'') !== 'Admin') return;
+  try{
+    const data = await apiGet({ view:'meta' });
+    if(!data.ok) throw new Error(data.error||'API-Fehler');
+    renderPlayers(data.players||[]);
+    renderFines(data.fines||[]);
+  }catch(e){ console.error(e); }
+}
+function renderPlayers(list){
+  const ul = byId('playersList'); ul.innerHTML='';
+  list.sort((a,b)=> a.name.localeCompare(b.name)).forEach(p=>{
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${p.name}</strong>
+      <span class="right"></span>
+      <button class="secondary" data-edit="${p.name}">Bearbeiten</button>
+      <button class="danger" data-del="${p.name}">Löschen</button>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('[data-edit]').forEach(btn=> btn.onclick = async ()=>{
+    byId('playerName').value = btn.dataset.edit;
+  });
+  ul.querySelectorAll('[data-del]').forEach(btn=> btn.onclick = async ()=>{
+    if(!confirm('Spieler löschen?')) return;
+    await apiAdmin('delete_player', { name: btn.dataset.del });
+    refreshStammdaten();
+  });
+}
+function renderFines(list){
+  const ul = byId('finesList'); ul.innerHTML='';
+  list.sort((a,b)=> a.name.localeCompare(b.name)).forEach(f=>{
+    const li = document.createElement('li');
+    li.innerHTML = `<strong>${f.name}</strong> – ${Number(f.amount||0).toFixed(2)} €
+      <span class="right"></span>
+      <button class="secondary" data-edit="${f.name}">Bearbeiten</button>
+      <button class="danger" data-del="${f.name}">Löschen</button>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('[data-edit]').forEach(btn=> btn.onclick = async ()=>{
+    const item = list.find(x=> x.name===btn.dataset.edit);
+    byId('fineName').value = item?.name || '';
+    byId('fineAmount').value = item ? Number(item.amount||0) : '';
+  });
+  ul.querySelectorAll('[data-del]').forEach(btn=> btn.onclick = async ()=>{
+    if(!confirm('Strafe löschen?')) return;
+    await apiAdmin('delete_fine', { name: btn.dataset.del });
+    refreshStammdaten();
+  });
+}
+byId('addPlayer').onclick = async ()=>{
+  const name = byId('playerName').value.trim(); if(!name) return alert('Name?');
+  await apiAdmin('upsert_player', { name });
+  byId('playerName').value=''; refreshStammdaten(); loadStammdatenIntoEntry();
+};
+byId('addFine').onclick = async ()=>{
+  const name = byId('fineName').value.trim();
+  const amount = Number(byId('fineAmount').value);
+  if(!name || !Number.isFinite(amount)) return alert('Vergehen & Betrag?');
+  await apiAdmin('upsert_fine', { name, amount });
+  byId('fineName').value=''; byId('fineAmount').value=''; refreshStammdaten(); loadStammdatenIntoEntry();
+};
+
+// ---------- Config events ----------
+byId('saveCfg').onclick = ()=> { saveCfg(); alert('Gespeichert'); };
+byId('clearCfg').onclick = ()=> { clearCfg(); alert('Zurückgesetzt'); };
+
+// Init
+loadCfg();
+
+4) apps_script/Code.gs
+
+Erweitere das Apps Script um drei Sheets:
+
+Daten (Einträge: id,name,fine,amount,ts)
+
+Players (Spieler: name)
+
+Fines (Strafen: name,amount)
+
+APIs:
+
+GET ?view=all → {rows, players, fines}
+
+GET ?view=meta → {players, fines}
+
+POST (ohne action) → Eintrag anlegen (name,fine,amount,ts)
+
+POST?action=delete_entry → Eintrag löschen (by id, Admin)
+
+POST?action=upsert_player|delete_player|upsert_fine|delete_fine (Admin)
+
+Auth: wie zuvor via API_KEY (alle) + ADMIN_KEY (für Admin-Aktionen) in Script Properties.
+
+// Code.gs — PenaltyTrack API (Daten + Players + Fines)
+const SHEET_DATA = 'Daten';
+const SHEET_PLAY = 'Players';
+const SHEET_FINE = 'Fines';
+
+function prop_(k){ return PropertiesService.getScriptProperties().getProperty(k) || ''; }
+function json_(o,c){ const x=ContentService.createTextOutput(JSON.stringify(o)); x.setMimeType(ContentService.MimeType.JSON); if(c) x.setResponseCode(c); return x; }
+
+function sheet_(name, header){
+  const ss = SpreadsheetApp.getActive();
+  let sh = ss.getSheetByName(name);
+  if(!sh){ sh = ss.insertSheet(name); sh.appendRow(header); }
+  return sh;
+}
+function auth_(e, needAdmin){
+  let api = e.parameter.apiKey || '', adm = e.parameter.adminKey || '';
+  if (e.postData && e.postData.contents){
+    try{ const b=JSON.parse(e.postData.contents); api=b.apiKey||api; adm=b.adminKey||adm; e._body=b; }catch(_){}
+  }
+  if (!prop_('API_KEY') || api !== prop_('API_KEY')) return {ok:false, code:401, msg:'unauthorized'};
+  if (needAdmin && adm !== prop_('ADMIN_KEY')) return {ok:false, code:403, msg:'forbidden'};
+  return {ok:true};
+}
+
+function doGet(e){
+  const a = auth_(e,false); if(!a.ok) return json_({ok:false,error:a.msg}, a.code);
+  const view = (e.parameter.view||'all').toLowerCase();
+
+  const shD = sheet_(SHEET_DATA, ['id','name','fine','amount','ts']);
+  const shP = sheet_(SHEET_PLAY, ['name']);
+  const shF = sheet_(SHEET_FINE, ['name','amount']);
+
+  const vals = shD.getDataRange().getValues(); const hD = vals.shift()||[];
+  const rows = vals.map(r=> Object.fromEntries(hD.map((h,i)=>[h, r[i]])));
+
+  const pVals = shP.getDataRange().getValues(); pVals.shift();
+  const players = pVals.map(r=> ({name:r[0]}));
+
+  const fVals = shF.getDataRange().getValues(); const hF = fVals.shift()||['name','amount'];
+  const fines = fVals.map(r=> Object.fromEntries(hF.map((h,i)=>[h, r[i]]))).map(x=> ({ name:x.name, amount:Number(x.amount||0) }));
+
+  if (view==='meta') return json_({ok:true, players, fines});
+  return json_({ok:true, rows, players, fines});
+}
+
+function doPost(e){
+  const action = (e.parameter.action||'').toLowerCase();
+
+  if (!action){
+    const a = auth_(e,false); if(!a.ok) return json_({ok:false,error:a.msg}, a.code);
+    try{
+      const b = e._body || JSON.parse(e.postData.contents||'{}');
+      const id = b.id || Utilities.getUuid();
+      const name = (b.name||'').toString();
+      const fine = (b.fine||'').toString();
+      const amount = Number(b.amount||0);
+      const ts = (b.ts || new Date().toISOString()).toString();
+      if(!name || !fine) return json_({ok:false,error:'missing name/fine'},400);
+      const sh = sheet_(SHEET_DATA, ['id','name','fine','amount','ts']);
+      sh.appendRow([id,name,fine,amount,ts]);
+      return json_({ok:true,id});
+    }catch(err){ return json_({ok:false,error:String(err)},500); }
+  }
+
+  // admin actions
+  const a = auth_(e,true); if(!a.ok) return json_({ok:false,error:a.msg}, a.code);
+  try{
+    const b = e._body || JSON.parse(e.postData.contents||'{}');
+    if (action==='delete_entry'){
+      const id = (b.id||'').toString(); if(!id) return json_({ok:false,error:'missing id'},400);
+      const sh = sheet_(SHEET_DATA, ['id','name','fine','amount','ts']);
+      const vals = sh.getDataRange().getValues(); const header = vals.shift();
+      const idx = header.reduce((m,h,i)=>(m[h]=i,m),{});
+      for(let r=0;r<vals.length;r++){ if(String(vals[r][idx.id])===id){ sh.deleteRow(r+2); return json_({ok:true,deleted:id}); } }
+      return json_({ok:false,error:'not found'},404);
+    }
+    if (action==='upsert_player'){
+      const name = (b.name||'').toString(); if(!name) return json_({ok:false,error:'missing name'},400);
+      const sh = sheet_(SHEET_PLAY, ['name']);
+      const rng = sh.getDataRange(); const vals = rng.getValues(); vals.shift();
+      // existiert? -> nichts doppelt
+      for(let r=0;r<vals.length;r++){ if(String(vals[r][0])===name) return json_({ok:true,upsert:name}); }
+      sh.appendRow([name]); return json_({ok:true,upsert:name});
+    }
+    if (action==='delete_player'){
+      const name = (b.name||'').toString(); if(!name) return json_({ok:false,error:'missing name'},400);
+      const sh = sheet_(SHEET_PLAY, ['name']); const vals = sh.getDataRange().getValues(); vals.shift();
+      for(let r=0;r<vals.length;r++){ if(String(vals[r][0])===name){ sh.deleteRow(r+2); return json_({ok:true,deleted:name}); } }
+      return json_({ok:false,error:'not found'},404);
+    }
+    if (action==='upsert_fine'){
+      const name = (b.name||'').toString(); const amount = Number(b.amount||0);
+      if(!name || !Number.isFinite(amount)) return json_({ok:false,error:'missing name/amount'},400);
+      const sh = sheet_(SHEET_FINE, ['name','amount']);
+      const vals = sh.getDataRange().getValues(); const header = vals.shift()||['name','amount'];
+      const idx = header.reduce((m,h,i)=>(m[h]=i,m),{});
+      for(let r=0;r<vals.length;r++){
+        if(String(vals[r][idx.name])===name){ sh.getRange(r+2, idx.amount+1).setValue(amount); return json_({ok:true,upsert:name}); }
+      }
+      sh.appendRow([name, amount]); return json_({ok:true,upsert:name});
+    }
+    if (action==='delete_fine'){
+      const name = (b.name||'').toString(); if(!name) return json_({ok:false,error:'missing name'},400);
+      const sh = sheet_(SHEET_FINE, ['name','amount']); const vals = sh.getDataRange().getValues(); vals.shift();
+      for(let r=0;r<vals.length;r++){ if(String(vals[r][0])===name){ sh.deleteRow(r+2); return json_({ok:true,deleted:name}); } }
+      return json_({ok:false,error:'not found'},404);
+    }
+    return json_({ok:false,error:'unknown action'},400);
+  }catch(err){ return json_({ok:false,error:String(err)},500); }
+}
+
+5) README.md
+
+Oben Frontmatter + kurze Anleitung.
+
+---
+title: Penalty Track (Static)
+emoji: 📦
+colorFrom: blue
+colorTo: green
+sdk: static
+app_file: index.html
+---
+
+# Penalty Track (HTML + Google Sheets)
+
+- **Start:** Spieler/Admin Auswahl (Admin-Passwort: `admin2024`, Spieler: nur Klick; intern `2024`)
+- **Tab 1:** Dashboard (Pott Summe €, Top 3, Chart kumuliert)
+- **Tab 2:** Detail pro Spieler
+- **Tab 3:** Erfassung (Admin) – Multi-Spieler + Strafe + Zeit
+- **Tab 4:** Stammdaten (Admin) – Spieler & Strafen verwalten
+
+## Einrichtung
+1) Google Sheet + Apps Script → `apps_script/Code.gs` in den Editor kopieren  
+   - Script Properties: `API_KEY`, `ADMIN_KEY` setzen  
+   - **Deploy → Web App** (Anyone with link) → `/exec` URL kopieren  
+2) GitHub Pages: Settings → Pages → Deploy from branch (`main`/root)  
+3) App öffnen → ⚙️ Konfiguration: API URL, API Key, (optional) Admin Key eintragen  
+
+6) .gitignore
+
+Nur lokale Artefakte ignorieren:
+
+*.db
+.streamlit/secrets.toml
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+7) Anforderungen (DoD)
+
+Startscreen (Rolle) → Spieler: Klick reicht; Admin: Passwort admin2024.
+
+Tabs: 1 Dashboard (Pott, Top3, Chart), 2 Detail (Spielerfilter), 3 Erfassung (Admin, Multi-Spieler + Strafe + Zeit), 4 Stammdaten (Admin).
+
+API-Calls: GET ?view=all|meta, POST (create), POST?action=delete_entry, upsert_/delete_ {player|fine}.
+
+Chart.js Linie „Akkumulierte Strafen über Zeit“ (Datum = ts).
+
+Keine Secrets hardcodieren; Konfig im Browser (localStorage).

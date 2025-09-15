@@ -1,0 +1,189 @@
+Arbeite in meinem GitHub-Repo Maxi10-create/penalty_track.
+Erledige bitte automatisch die folgenden Schritte und Dateien:
+
+1) index.html (neu anlegen/überschreiben, Root des Repos)
+
+Erstelle eine statische HTML-App (Variante B: Google Sheets via Apps Script) mit Rollen: Admin (CRUD inkl. Löschen) & Spieler (Create + Read).
+Die App soll beim ersten Laden oben eine Konfig-Sektion anzeigen, in der ich API-URL, API Key (für alle) und optional Admin Key (nur Admin) eintrage.
+Wichtig: Diese Werte werden nur im localStorage gespeichert, nicht ins Repo.
+
+Dateiinhalt exakt wie folgt:
+
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Penalty Track – HTML + Google Sheets</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:980px;margin:24px auto;padding:0 12px}
+    h1{font-size:1.5rem;margin-bottom:8px}
+    form, .card{border:1px solid #ddd;border-radius:12px;padding:16px;margin:12px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    label{display:block;font-weight:600;margin-top:8px}
+    input,select{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}
+    button{padding:10px 14px;border:0;border-radius:10px;background:#0d6efd;color:#fff;font-weight:600;cursor:pointer}
+    button.secondary{background:#6c757d}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;font-size:.95rem}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .row > * {flex:1}
+    .muted{color:#666;font-size:.9rem}
+    .success{color:#137333;font-weight:600}
+    .danger{color:#b3261e;font-weight:600}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .right{margin-left:auto}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;background:#eef;font-weight:600;font-size:.85rem}
+  </style>
+</head>
+<body>
+  <h1>📦 Penalty Track – HTML + Google Sheets</h1>
+  <p class="muted">Statische App. Gemeinsamer Speicher über Google Sheets. Admin kann löschen; Spieler nur eintragen/ansehen.</p>
+
+  <!-- Konfig-Formular -->
+  <form id="configForm" class="card">
+    <div class="row">
+      <div>
+        <label for="apiUrl">API URL (Apps Script Web-App)</label>
+        <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" required />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="apiKey">API Key (für alle)</label>
+        <input id="apiKey" placeholder="API-Schlüssel" required />
+      </div>
+      <div>
+        <label for="adminKey">Admin Key (nur Admin; leer lassen = Spieler)</label>
+        <input id="adminKey" placeholder="Admin-Schlüssel (optional)" />
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:10px">
+      <button type="submit">🔐 Speichern</button>
+      <button type="button" class="secondary" id="clearKeys">Keys löschen</button>
+      <span class="right tag" id="roleTag">Rolle: Spieler</span>
+    </div>
+  </form>
+
+  <!-- Eingabe-Formular -->
+  <form id="entryForm" class="card">
+    <div class="row">
+      <div>
+        <label for="name">Name</label>
+        <input id="name" placeholder="z. B. Spieler" required />
+      </div>
+      <div>
+        <label for="value">Wert</label>
+        <input id="value" placeholder="z. B. Strafpunkt / Notiz" required />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label for="category">Kategorie</label>
+        <select id="category">
+          <option>Allgemein</option>
+          <option>Training</option>
+          <option>Spiel</option>
+        </select>
+      </div>
+      <div>
+        <label for="ts">Zeitstempel</label>
+        <input id="ts" type="datetime-local" />
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:10px">
+      <button type="submit">➕ Speichern</button>
+      <button type="button" class="secondary" id="reload">🔄 Neu laden</button>
+      <button type="button" class="secondary right" id="exportCsv">⬇️ Export CSV</button>
+    </div>
+    <div id="msg" class="muted" style="margin-top:8px"></div>
+  </form>
+
+  <!-- Tabelle -->
+  <div class="card">
+    <div class="toolbar">
+      <strong>Einträge</strong>
+      <span class="muted" id="countInfo"></span>
+    </div>
+    <table id="table">
+      <thead>
+        <tr><th>Datum</th><th>Name</th><th>Wert</th><th>Kategorie</th><th id="thActions">Aktionen</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+const LS = { apiUrl:'pt_api_url', apiKey:'pt_api_key', adminKey:'pt_admin_key' };
+function saveKeys(){ localStorage.setItem(LS.apiUrl,document.getElementById('apiUrl').value.trim()); localStorage.setItem(LS.apiKey,document.getElementById('apiKey').value.trim()); localStorage.setItem(LS.adminKey,document.getElementById('adminKey').value.trim()); updateRoleTag(); }
+function loadKeys(){ document.getElementById('apiUrl').value=localStorage.getItem(LS.apiUrl)||''; document.getElementById('apiKey').value=localStorage.getItem(LS.apiKey)||''; document.getElementById('adminKey').value=localStorage.getItem(LS.adminKey)||''; updateRoleTag(); }
+function clearKeys(){ localStorage.removeItem(LS.apiUrl); localStorage.removeItem(LS.apiKey); localStorage.removeItem(LS.adminKey); loadKeys(); renderRows([]); }
+function isAdmin(){ return !!(localStorage.getItem(LS.adminKey)||'').trim(); }
+function getCfg(){ const api=(localStorage.getItem(LS.apiUrl)||'').trim(); const k=(localStorage.getItem(LS.apiKey)||'').trim(); const a=(localStorage.getItem(LS.adminKey)||'').trim(); if(!api||!k) throw new Error('API URL/Key fehlt'); return {api,k,a}; }
+function updateRoleTag(){ document.getElementById('roleTag').textContent='Rolle: '+(isAdmin()?'Admin':'Spieler'); document.getElementById('thActions').style.display=isAdmin()?'':'none'; }
+function fmtDate(iso){ try{return new Date(iso).toLocaleString();}catch{return iso;} }
+function escapeHtml(s){ return (s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+function msg(text,kind="muted"){const el=document.getElementById("msg");el.textContent=text;el.className=kind;setTimeout(()=>{el.textContent="";el.className="muted";},2500);}
+async function apiGet(){ const {api,k}=getCfg(); const u=new URL(api); u.searchParams.set('apiKey',k); const r=await fetch(u.toString()); if(!r.ok) throw new Error('GET '+r.status); return r.json(); }
+async function apiPost(payload){ const {api,k}=getCfg(); const body={...payload,apiKey:k}; const r=await fetch(api,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); if(!r.ok) throw new Error('POST '+r.status); return r.json(); }
+async function apiDelete(id){ if(!isAdmin()) throw new Error('not admin'); const {api,k,a}=getCfg(); const body={action:'delete',apiKey:k,adminKey:a,id}; const r=await fetch(api+'?action=delete',{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); if(!r.ok) throw new Error('DELETE '+r.status); return r.json(); }
+function renderRows(rows){ const tbody=document.querySelector("#table tbody"); tbody.innerHTML=""; rows.sort((a,b)=>String(b.ts||"").localeCompare(String(a.ts||""))); for(const e of rows){ const tr=document.createElement("tr"); const actions=isAdmin()?`<button class="secondary btnDel" data-id="${e.id}">Löschen</button>`:''; tr.innerHTML=`<td>${e.ts?fmtDate(e.ts):"-"}</td><td>${escapeHtml(e.name||"")}</td><td>${escapeHtml(e.value||"")}</td><td>${escapeHtml(e.category||"")}</td><td style="${isAdmin()?'':'display:none'}">${actions}</td>`; tbody.appendChild(tr);} document.getElementById("countInfo").textContent=`(${rows.length})`; if(isAdmin()){ document.querySelectorAll(".btnDel").forEach(b=>b.onclick=async()=>{ if(!confirm("Diesen Eintrag löschen?")) return; try{ await apiDelete(b.dataset.id); await loadAndRender(); }catch(e){ msg("Löschen fehlgeschlagen.","danger"); }}); } }
+async function loadAndRender(){ try{ const data=await apiGet(); if(!data.ok) throw new Error(data.error||'API-Fehler'); renderRows(data.rows||[]);}catch(e){ msg("Fehler beim Laden.","danger"); } }
+document.getElementById('configForm').addEventListener('submit',(ev)=>{ev.preventDefault();saveKeys();msg("Konfiguration gespeichert.","success");loadAndRender();}); document.getElementById('clearKeys').onclick=()=>clearKeys();
+document.getElementById("entryForm").addEventListener("submit",async(ev)=>{ev.preventDefault(); try{ const name=document.getElementById("name").value.trim(); const value=document.getElementById("value").value.trim(); const category=document.getElementById("category").value; const tsInput=document.getElementById("ts").value; if(!name||!value){ msg("Bitte Name und Wert angeben.","danger"); return;} const ts=tsInput?new Date(tsInput).toISOString():new Date().toISOString(); await apiPost({name,value,category,ts}); msg("Gespeichert.","success"); ev.target.reset(); await loadAndRender(); }catch(err){ msg("Fehler beim Speichern.","danger"); }});
+document.getElementById("reload").onclick=()=>loadAndRender();
+document.getElementById("exportCsv").onclick=async()=>{ try{ const data=await apiGet(); if(!data.ok) throw new Error(data.error||'API-Fehler'); const rows=data.rows||[]; const header=["id","name","value","category","ts"]; const csv=[header.join(",")].concat(rows.map(r=>header.map(h=>csvCell(r[h])).join(","))).join("\n"); const blob=new Blob([csv],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="penalty_track.csv"; a.click(); }catch(e){ msg("Export fehlgeschlagen.","danger"); } };
+function csvCell(s){ s=(s??"").toString(); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
+loadKeys();
+</script>
+</body>
+</html>
+
+2) .gitignore (ergänzen/erstellen)
+
+Füge/ergänze diese Einträge, damit keine lokalen Artefakte/Secrets ins Repo kommen:
+
+*.db
+.streamlit/secrets.toml
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+3) README.md (oben Metadaten für Pages, statisches Hosting)
+
+Füge am Anfang von README.md den folgenden YAML-Block ein (falls schon HF-/Streamlit-Frontmatter existiert, ersetze sie durch diese):
+
+---
+title: Penalty Track (Static)
+emoji: 📦
+colorFrom: blue
+colorTo: green
+sdk: static
+app_file: index.html
+---
+
+## Deployment (GitHub Pages)
+1. Settings → Pages → Source = Deploy from a branch → Branch = main, Folder = /(root) → Save
+2. Auf die erzeugte URL gehen (z. B. https://maxi10-create.github.io/penalty_track/)
+3. Oben in der App API URL (…/exec), API Key und optional Admin Key eintragen → Speichern
+
+4) Nichts weiter ändern (keine Secrets in Dateien)
+
+Keine API-URL/Keys hardcoden. Die App liest sie im Browser aus localStorage.
+
+5) Abschluss
+
+Stelle sicher, dass die neuen/aktualisierten Dateien im Repo-Root liegen.
+
+Nur noch committen & pushen (die App ist dann über GitHub Pages nutzbar).
+
+Akzeptanzkriterien (prüfe nach Ausführung)
+
+ index.html vorhanden, lädt & zeigt Konfig-Sektion (API-URL/Keys).
+
+ Eingaben werden gespeichert (POST) und angezeigt (GET).
+
+ Mit Admin Key erscheinen „Löschen“-Buttons und funktionieren.
+
+ .gitignore vorhanden/ergänzt.
+
+ README.md enthält Pages-Hinweis.

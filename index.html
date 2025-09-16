@@ -4,148 +4,481 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Penalty Track</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#0b1220;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#60a5fa;--accent-2:#22d3ee;
+      --ok:#22c55e;--warn:#f59e0b;--danger:#ef4444;--border:#1f2937;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;background:radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%) , radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%), var(--bg);
+      color:var(--text); font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      display:flex; flex-direction:column;
+    }
+    header{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:18px clamp(12px,3vw,28px);
+      border-bottom:1px solid var(--border);
+      background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+      position:sticky; top:0; z-index:10;
+    }
+    h1{margin:0; font-size:clamp(20px,3vw,28px)}
+    .brand{display:flex; align-items:center; gap:10px}
+    .badge{font-weight:800; letter-spacing:.3px; padding:4px 8px; border-radius:10px; background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#0b1220}
+    .cfg details>summary{cursor:pointer; color:var(--muted)}
+    .cfg-panel{
+      margin-top:8px; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px
+    }
+    .input, select{
+      width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; background:#0b1220; color:var(--text);
+      outline:none; transition:border-color .15s ease;
+    }
+    .input:focus, select:focus{border-color:var(--accent)}
+    .btn{
+      padding:10px 14px; border:0; border-radius:12px; cursor:pointer; font-weight:700; letter-spacing:.2px;
+      color:#0b1220; background:linear-gradient(90deg,var(--accent),var(--accent-2)); box-shadow:0 6px 20px rgba(96,165,250,.18);
+    }
+    .btn.secondary{background:#334155; color:#e5e7eb; box-shadow:none}
+    .btn.ghost{background:transparent; color:var(--muted); border:1px dashed var(--border)}
+    .btn.danger{background:linear-gradient(90deg,#fb7185,#f43f5e); color:#0b1220}
+    .roleTag{font-weight:800; color:var(--muted)}
+    main{padding:18px clamp(12px,3vw,28px); flex:1}
+    .grid{display:grid; gap:16px}
+    .card{background:rgba(17,24,39,.65); border:1px solid var(--border); border-radius:16px; padding:16px; backdrop-filter: blur(6px)}
+    .muted{color:var(--muted)}
+    .row{display:flex; gap:12px; flex-wrap:wrap}
+    .kpi{font-size:32px; font-weight:900}
+    .tabs{display:flex; gap:8px; margin:12px 0}
+    .tabs .t{padding:10px 12px; border-radius:12px; background:#0b1220; color:#cbd5e1; border:1px solid var(--border); cursor:pointer}
+    .tabs .t.active{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#0b1220; border:0}
+    .hidden{display:none}
+    table{width:100%; border-collapse:collapse}
+    th,td{padding:10px; border-bottom:1px solid var(--border); text-align:left}
+    th{color:#cbd5e1; font-weight:700}
+    .pill{display:inline-block; padding:2px 10px; border-radius:999px; background:#0b1220; border:1px solid var(--border); color:#cbd5e1; font-weight:700}
+    .split{display:grid; grid-template-columns:1.05fr .95fr; gap:16px}
+    @media (max-width: 900px){ .split{grid-template-columns:1fr} }
+    .adminOnly{display:none}
+    /* Startscreen */
+    .start{
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; align-items:stretch;
+    }
+    .start .choice{display:flex; flex-direction:column; gap:12px}
+    .hint{font-size:.95rem; color:#a5b4fc}
+    footer{padding:18px clamp(12px,3vw,28px); color:var(--muted); border-top:1px solid var(--border)}
+  </style>
 </head>
 <body>
   <header>
-    <h1>📦 Penalty Track</h1>
+    <div class="brand">
+      <span class="badge">Penalty</span><h1>Track</h1>
+    </div>
     <div class="cfg">
       <details>
         <summary>⚙️ Konfiguration</summary>
-        <div>
+        <div class="cfg-panel card">
           <label>API URL (Apps Script /exec)
-            <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+            <input id="apiUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"/>
           </label>
           <label>API Key (alle)
-            <input id="apiKey" placeholder="API Key" />
+            <input id="apiKey" class="input" placeholder="API Key"/>
           </label>
           <label>Admin Key (nur Admin)
-            <input id="adminKey" placeholder="Admin Key" />
+            <input id="adminKey" class="input" placeholder="Admin Key"/>
           </label>
-          <div style="margin-top:16px;display:flex;gap:8px;">
-            <button id="saveCfg">Speichern</button>
-            <button id="clearCfg" class="secondary">Zurücksetzen</button>
+          <div class="row">
+            <button id="saveCfg" class="btn">Speichern</button>
+            <button id="clearCfg" class="btn ghost">Zurücksetzen</button>
+            <span id="cfgMsg" class="muted"></span>
           </div>
         </div>
       </details>
-      <span class="roleTag" id="roleTag">Rolle: –</span>
     </div>
+    <span id="roleTag" class="roleTag">Rolle: –</span>
   </header>
 
-  <!-- Startscreen -->
-  <section id="screenRole" class="card welcome-screen">
-    <h2>👋 Willkommen bei Penalty Track</h2>
-    <p class="subtitle">Wähle deine Rolle aus:</p>
-    <div class="role-buttons">
-      <div class="role-card">
-        <button id="btnPlayer" class="role-btn player-btn">
-          <div class="role-icon">👤</div>
-          <div class="role-title">Spieler</div>
-          <div class="role-desc">Strafen anzeigen und einsehen</div>
-        </button>
-        <p class="role-hint">Einfach klicken - kein Passwort nötig</p>
-      </div>
-      <div class="role-card">
-        <div class="admin-section">
-          <input id="adminPwd" type="password" placeholder="Admin-Passwort eingeben" class="admin-input" />
-          <button id="btnAdmin" class="role-btn admin-btn">
-            <div class="role-icon">🛡️</div>
-            <div class="role-title">Admin</div>
-            <div class="role-desc">Strafen verwalten und erfassen</div>
-          </button>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Tabs -->
-  <nav id="tabs" class="tabs hidden">
-    <button data-tab="tab1" class="active">1) Dashboard</button>
-    <button data-tab="tab2">2) Strafen (Spieler)</button>
-    <button data-tab="tab3" id="tab3btn" class="adminOnly">3) Strafenerfassung</button>
-    <button data-tab="tab4" id="tab4btn" class="adminOnly">4) Stammdaten</button>
-  </nav>
-
-  <!-- Tab 1: Dashboard -->
-  <section id="tab1" class="tab card hidden">
-    <h2>Dashboard</h2>
-    <div class="row">
+  <main>
+    <!-- Startscreen -->
+    <section id="screenRole" class="grid">
       <div class="card">
-        <h3>Pott (Summe €)</h3>
-        <div id="pott" class="kpi">0 €</div>
+        <h2>Willkommen 👋</h2>
+        <p class="muted">Bitte wähle deinen Zugang. Die Konfiguration oben (API-URL & Keys) muss einmalig gesetzt werden.</p>
       </div>
-      <div class="card">
-        <h3>Top 3 Spieler (Summe €)</h3>
-        <ol id="top3"></ol>
-      </div>
-    </div>
-    <div class="card">
-      <h3>Akkumulierte Strafen über Zeit</h3>
-      <canvas id="chart"></canvas>
-    </div>
-  </section>
-
-  <!-- Tab 2: Detail by Spieler -->
-  <section id="tab2" class="tab card hidden">
-    <h2>Strafen pro Spieler</h2>
-    <label>Spieler wählen
-      <select id="filterPlayer"></select>
-    </label>
-    <table class="table">
-      <thead>
-        <tr><th>Datum</th><th>Spieler</th><th>Vergehen</th><th>Betrag (€)</th></tr>
-      </thead>
-      <tbody id="detailBody"></tbody>
-    </table>
-  </section>
-
-  <!-- Tab 3: Erfassung (Admin) -->
-  <section id="tab3" class="tab card hidden">
-    <h2>Strafenerfassung (Admin)</h2>
-    <div class="row">
-      <label>Spieler (Mehrfachauswahl)
-        <select id="entryPlayers" multiple size="6"></select>
-      </label>
-      <label>Strafe (aus Stammdaten)
-        <select id="entryFine"></select>
-      </label>
-    </div>
-    <div class="row">
-      <label>Zeitstempel
-        <input id="entryTs" type="datetime-local" />
-      </label>
-    </div>
-    <button id="saveEntry" class="primary">➕ Speichern</button>
-    <div id="msgEntry" class="muted"></div>
-  </section>
-
-  <!-- Tab 4: Stammdaten (Admin) -->
-  <section id="tab4" class="tab card hidden">
-    <h2>Stammdaten (Admin)</h2>
-
-    <div class="row">
-      <div class="card flex1">
-        <h3>Spieler</h3>
-        <div class="row">
-          <input id="playerName" placeholder="Neuer/zu ändernder Spielername" />
-          <button id="addPlayer" class="primary">Speichern/Upsert</button>
+      <div class="start">
+        <div class="card choice">
+          <h3>👤 Spieler</h3>
+          <p class="muted">Eintragen & ansehen. <span class="hint">Spieler-Passwort: <b>2024</b></span></p>
+          <button id="btnPlayer" class="btn">Als Spieler starten</button>
         </div>
-        <ul id="playersList"></ul>
-      </div>
-
-      <div class="card flex1">
-        <h3>Strafen (Vergehen & Betrag €)</h3>
-        <div class="row">
-          <input id="fineName" placeholder="Vergehen" />
-          <input id="fineAmount" placeholder="Betrag (€)" type="number" step="0.01" />
-          <button id="addFine" class="primary">Speichern/Upsert</button>
+        <div class="card choice">
+          <h3>🛡️ Admin</h3>
+          <p class="muted">Pflegt Stammdaten & erfasst Strafen für mehrere Spieler.</p>
+          <input id="adminPwd" class="input" type="password" placeholder="Admin-Passwort eingeben"/>
+          <button id="btnAdmin" class="btn secondary">Als Admin anmelden</button>
+          <span id="loginMsg" class="muted"></span>
         </div>
-        <ul id="finesList"></ul>
       </div>
-    </div>
-  </section>
+    </section>
 
-  <script src="app.js"></script>
+    <!-- Tabs -->
+    <nav id="tabs" class="tabs hidden">
+      <button class="t active" data-tab="tab1">1) Dashboard</button>
+      <button class="t" data-tab="tab2">2) Strafen (Spieler)</button>
+      <button class="t adminOnly" data-tab="tab3">3) Strafenerfassung</button>
+      <button class="t adminOnly" data-tab="tab4">4) Stammdaten</button>
+    </nav>
+
+    <!-- Tab 1: Dashboard -->
+    <section id="tab1" class="card hidden">
+      <div class="split">
+        <div class="card">
+          <h3>Pott (Summe €)</h3>
+          <div id="pott" class="kpi">0,00 €</div>
+          <p class="muted" id="countSum">– Einträge</p>
+        </div>
+        <div class="card">
+          <h3>Top 3 Spieler (Summe €)</h3>
+          <ol id="top3" style="margin:0; padding-left:22px"></ol>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <h3>Akkumulierte Strafen über Zeit</h3>
+        <canvas id="chart" height="110"></canvas>
+      </div>
+    </section>
+
+    <!-- Tab 2: Detail pro Spieler -->
+    <section id="tab2" class="card hidden">
+      <div class="row" style="align-items:flex-end">
+        <label style="min-width:240px">Spieler wählen
+          <select id="filterPlayer" class="input"></select>
+        </label>
+        <span id="detailSum" class="pill">0,00 €</span>
+      </div>
+      <div class="card" style="margin-top:12px; overflow:auto">
+        <table>
+          <thead><tr><th>Datum</th><th>Spieler</th><th>Vergehen</th><th>Betrag (€)</th></tr></thead>
+          <tbody id="detailBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Tab 3: Erfassung (Admin) -->
+    <section id="tab3" class="card hidden">
+      <h3>Strafenerfassung</h3>
+      <div class="row">
+        <label style="min-width:260px">Spieler (Mehrfachauswahl)
+          <select id="entryPlayers" class="input" multiple size="8" style="height:220px"></select>
+        </label>
+        <label style="min-width:260px">Strafe (aus Stammdaten)
+          <select id="entryFine" class="input"></select>
+        </label>
+        <label style="min-width:220px">Zeitstempel
+          <input id="entryTs" class="input" type="datetime-local"/>
+        </label>
+      </div>
+      <div class="row">
+        <button id="saveEntry" class="btn">➕ Speichern</button>
+        <span id="msgEntry" class="muted"></span>
+      </div>
+    </section>
+
+    <!-- Tab 4: Stammdaten (Admin) -->
+    <section id="tab4" class="card hidden">
+      <div class="split">
+        <div class="card">
+          <h3>Spieler</h3>
+          <div class="row">
+            <input id="playerName" class="input" placeholder="Neuer/zu ändernder Spielername"/>
+            <button id="addPlayer" class="btn">Speichern / Upsert</button>
+          </div>
+          <ul id="playersList" style="list-style:none; padding-left:0; margin-top:12px"></ul>
+        </div>
+        <div class="card">
+          <h3>Strafen (Vergehen & Betrag €)</h3>
+          <div class="row">
+            <input id="fineName" class="input" placeholder="Vergehen"/>
+            <input id="fineAmount" class="input" type="number" step="0.01" placeholder="Betrag (€)"/>
+            <button id="addFine" class="btn">Speichern / Upsert</button>
+          </div>
+          <ul id="finesList" style="list-style:none; padding-left:0; margin-top:12px"></ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span class="muted">© Penalty Track • HTML + Google Sheets • Client-only</span>
+  </footer>
+
+  <script>
+    // ===== Config & Role handling =====
+    const LS = { api:'pt_api', key:'pt_key', adm:'pt_adm', role:'pt_role' };
+    const PLAYER_PWD = "2024";
+    const ADMIN_PWD  = "admin2024";
+
+    const $ = id => document.getElementById(id);
+    const qs = (sel, el=document)=> el.querySelector(sel);
+    const qsa = (sel, el=document)=> Array.from(el.querySelectorAll(sel));
+    function euro(n){ const x = Number(n)||0; return x.toLocaleString('de-DE',{style:'currency',currency:'EUR'}); }
+
+    function loadCfg(){
+      $('apiUrl').value = localStorage.getItem(LS.api) || '';
+      $('apiKey').value = localStorage.getItem(LS.key) || '';
+      $('adminKey').value = localStorage.getItem(LS.adm) || '';
+      updateRoleTag();
+    }
+    function saveCfg(){
+      localStorage.setItem(LS.api, $('apiUrl').value.trim());
+      localStorage.setItem(LS.key, $('apiKey').value.trim());
+      localStorage.setItem(LS.adm, $('adminKey').value.trim());
+      $('cfgMsg').textContent = 'Gespeichert';
+      setTimeout(()=> $('cfgMsg').textContent='', 1200);
+    }
+    function clearCfg(){
+      localStorage.removeItem(LS.api);
+      localStorage.removeItem(LS.key);
+      localStorage.removeItem(LS.adm);
+      updateRoleTag();
+    }
+    function updateRoleTag(){
+      const role = localStorage.getItem(LS.role) || '–';
+      $('roleTag').textContent = 'Rolle: ' + role;
+      const isAdmin = role === 'Admin';
+      qsa('.adminOnly').forEach(el => el.classList.toggle('hidden', !isAdmin));
+    }
+
+    function showApp(){
+      $('screenRole').classList.add('hidden');
+      $('tabs').classList.remove('hidden');
+      switchTab('tab1');
+    }
+
+    $('btnPlayer').onclick = ()=>{
+      // Spieler: nur Klick (Hinweis "2024" bleibt rein informativ)
+      localStorage.setItem(LS.role, 'Spieler');
+      updateRoleTag(); showApp();
+    };
+    $('btnAdmin').onclick = ()=>{
+      const p = $('adminPwd').value.trim();
+      if (p !== ADMIN_PWD){ $('loginMsg').textContent = 'Falsches Passwort'; return; }
+      $('loginMsg').textContent = '';
+      localStorage.setItem(LS.role, 'Admin');
+      updateRoleTag(); showApp();
+    };
+
+    $('saveCfg').onclick = saveCfg;
+    $('clearCfg').onclick = ()=>{ clearCfg(); $('apiUrl').value=''; $('apiKey').value=''; $('adminKey').value=''; };
+
+    // ===== Tabs =====
+    qsa('#tabs .t').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
+    function switchTab(id){
+      qsa('main section').forEach(s=> s.classList.add('hidden'));
+      $('tabs').classList.remove('hidden');
+      qsa('#tabs .t').forEach(b=> b.classList.toggle('active', b.dataset.tab===id));
+      $(id).classList.remove('hidden');
+      if(id==='tab1') refreshDashboard();
+      if(id==='tab2') refreshDetail();
+      if(id==='tab3') loadStammdatenIntoEntry();
+      if(id==='tab4') refreshStammdaten();
+    }
+
+    // ===== API =====
+    function cfg(){
+      const api = (localStorage.getItem(LS.api)||'').trim();
+      const key = (localStorage.getItem(LS.key)||'').trim();
+      const adm = (localStorage.getItem(LS.adm)||'').trim();
+      if(!api || !key) throw new Error('Konfiguration unvollständig (API URL & Key)');
+      return {api,key,adm};
+    }
+    async function apiGet(params={}){
+      const {api,key} = cfg();
+      const u = new URL(api);
+      u.searchParams.set('apiKey', key);
+      Object.entries(params).forEach(([k,v])=> u.searchParams.set(k,v));
+      const r = await fetch(u.toString());
+      if(!r.ok) throw new Error('GET '+r.status);
+      return r.json();
+    }
+    async function apiPost(body){
+      const {api,key} = cfg();
+      const r = await fetch(api, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ apiKey:key, ...body }) });
+      if(!r.ok) throw new Error('POST '+r.status);
+      return r.json();
+    }
+    async function apiAdmin(action, body){
+      const {api,key,adm} = cfg();
+      const r = await fetch(api + '?action='+encodeURIComponent(action), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ apiKey:key, adminKey:adm, ...body })
+      });
+      if(!r.ok) throw new Error(action+' '+r.status);
+      return r.json();
+    }
+
+    // ===== Tab 1: Dashboard =====
+    let lineChart;
+    async function refreshDashboard(){
+      try{
+        const data = await apiGet({view:'all'});
+        if(!data.ok) throw new Error(data.error||'API-Fehler');
+        const rows = (data.rows||[]).map(r=> ({...r, amount:Number(r.amount||r.betrag||r.value||0)}));
+        $('countSum').textContent = rows.length + ' Einträge';
+        // Summe
+        const total = rows.reduce((a,r)=> a+(Number(r.amount)||0), 0);
+        $('pott').textContent = euro(total);
+        // Top 3
+        const per = {};
+        rows.forEach(r=>{
+          const k = r.name||'';
+          per[k] = (per[k]||0) + (Number(r.amount)||0);
+        });
+        const top = Object.entries(per).sort((a,b)=> b[1]-a[1]).slice(0,3);
+        const ol = $('top3'); ol.innerHTML = '';
+        top.forEach(([n,amt])=>{
+          const li=document.createElement('li'); li.textContent = `${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);
+        });
+        // Chart kumuliert
+        const pts = rows.map(r=> ({t:new Date(r.ts||Date.now()), v:Number(r.amount)||0}))
+                        .sort((a,b)=> a.t-b.t);
+        let sum=0; const labels=[], values=[];
+        pts.forEach(p=>{ sum+=p.v; labels.push(p.t.toLocaleDateString()); values.push(sum); });
+        renderChart(labels, values);
+      }catch(e){ console.error(e); }
+    }
+    function renderChart(labels, values){
+      const ctx = $('chart').getContext('2d');
+      if(lineChart) lineChart.destroy();
+      lineChart = new Chart(ctx, {
+        type:'line',
+        data:{ labels, datasets:[{ label:'Akkumuliert (€)', data: values, tension:.3 }] },
+        options:{ responsive:true, plugins:{ legend:{display:true} }, scales:{ y:{ ticks:{ callback:(v)=> euro(v) } } } }
+      });
+    }
+
+    // ===== Tab 2: Detail pro Spieler =====
+    async function refreshDetail(){
+      try{
+        const data = await apiGet({view:'all'});
+        if(!data.ok) throw new Error(data.error||'API-Fehler');
+        const players = data.players||[];
+        const rows = (data.rows||[]).map(r=> ({...r, amount:Number(r.amount||0)}));
+        const sel = $('filterPlayer'); sel.innerHTML = '';
+        players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; sel.appendChild(o); });
+        sel.onchange = ()=> fillDetail(rows, sel.value);
+        if(players[0]) fillDetail(rows, players[0].name);
+        else { $('detailBody').innerHTML=''; $('detailSum').textContent=euro(0); }
+      }catch(e){ console.error(e); }
+    }
+    function fillDetail(rows, name){
+      const body = $('detailBody'); body.innerHTML='';
+      const own = rows.filter(r=> (r.name||'')===name).sort((a,b)=> String(b.ts).localeCompare(String(a.ts)));
+      let s=0;
+      own.forEach(r=>{
+        s += Number(r.amount)||0;
+        const tr=document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(r.ts).toLocaleString()}</td><td>${r.name}</td><td>${r.fine||r.offense||r.value}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
+        body.appendChild(tr);
+      });
+      $('detailSum').textContent = euro(s);
+    }
+
+    // ===== Tab 3: Erfassung (Admin) =====
+    async function loadStammdatenIntoEntry(){
+      if ((localStorage.getItem(LS.role)||'') !== 'Admin') return;
+      try{
+        const meta = await apiGet({view:'meta'});
+        if(!meta.ok) throw new Error(meta.error||'API-Fehler');
+        const players = meta.players||[], fines = meta.fines||[];
+        const selP = $('entryPlayers'); selP.innerHTML='';
+        players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o); });
+        const selF = $('entryFine'); selF.innerHTML='';
+        fines.forEach(f=>{
+          const o=document.createElement('option');
+          o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0;
+          selF.appendChild(o);
+        });
+      }catch(e){ console.error(e); }
+    }
+    $('saveEntry').onclick = async ()=>{
+      try{
+        if ((localStorage.getItem(LS.role)||'') !== 'Admin') return alert('Nur für Admin');
+        const players = Array.from($('entryPlayers').selectedOptions).map(o=> o.value);
+        const fineOpt = $('entryFine').selectedOptions[0];
+        const fineName = fineOpt?.value||''; const amount = Number(fineOpt?.dataset.amount||0);
+        const ts = $('entryTs').value ? new Date($('entryTs').value).toISOString() : new Date().toISOString();
+        if(!players.length || !fineName) return alert('Bitte Spieler & Strafe wählen');
+        for(const name of players){ await apiPost({ name, fine: fineName, amount, ts }); }
+        $('msgEntry').textContent = 'Gespeichert.'; setTimeout(()=> $('msgEntry').textContent='', 1200);
+      }catch(e){ console.error(e); alert('Fehler beim Speichern'); }
+    };
+
+    // ===== Tab 4: Stammdaten (Admin) =====
+    async function refreshStammdaten(){
+      if ((localStorage.getItem(LS.role)||'') !== 'Admin') return;
+      try{
+        const meta = await apiGet({view:'meta'});
+        if(!meta.ok) throw new Error(meta.error||'API-Fehler');
+        renderPlayers(meta.players||[]);
+        renderFines(meta.fines||[]);
+      }catch(e){ console.error(e); }
+    }
+    function renderPlayers(list){
+      const ul=$('playersList'); ul.innerHTML='';
+      list.sort((a,b)=> a.name.localeCompare(b.name)).forEach(p=>{
+        const li=document.createElement('li'); li.className='row'; li.style.alignItems='center';
+        li.innerHTML = `<span class="pill">${p.name}</span>
+          <span style="flex:1"></span>
+          <button class="btn secondary" data-edit="${p.name}">Bearbeiten</button>
+          <button class="btn danger" data-del="${p.name}">Löschen</button>`;
+        ul.appendChild(li);
+      });
+      qsa('[data-edit]', ul).forEach(b=> b.onclick = ()=> { $('playerName').value = b.dataset.edit; });
+      qsa('[data-del]', ul).forEach(b=> b.onclick = async ()=>{
+        if(!confirm('Spieler löschen?')) return;
+        await apiAdmin('delete_player', { name: b.dataset.del });
+        refreshStammdaten(); loadStammdatenIntoEntry();
+      });
+    }
+    function renderFines(list){
+      const ul=$('finesList'); ul.innerHTML='';
+      list.sort((a,b)=> a.name.localeCompare(b.name)).forEach(f=>{
+        const li=document.createElement('li'); li.className='row'; li.style.alignItems='center';
+        li.innerHTML = `<span class="pill">${f.name} • ${(Number(f.amount)||0).toFixed(2)} €</span>
+          <span style="flex:1"></span>
+          <button class="btn secondary" data-edit="${f.name}">Bearbeiten</button>
+          <button class="btn danger" data-del="${f.name}">Löschen</button>`;
+        ul.appendChild(li);
+      });
+      qsa('[data-edit]', ul).forEach(b=> b.onclick = ()=>{
+        const f = list.find(x=> x.name===b.dataset.edit);
+        $('fineName').value = f?.name||''; $('fineAmount').value = f ? Number(f.amount||0) : '';
+      });
+      qsa('[data-del]', ul).forEach(b=> b.onclick = async ()=>{
+        if(!confirm('Strafe löschen?')) return;
+        await apiAdmin('delete_fine', { name: b.dataset.del });
+        refreshStammdaten(); loadStammdatenIntoEntry();
+      });
+    }
+    $('addPlayer').onclick = async ()=>{
+      if ((localStorage.getItem(LS.role)||'') !== 'Admin') return alert('Nur für Admin');
+      const name = $('playerName').value.trim(); if(!name) return alert('Name?');
+      await apiAdmin('upsert_player', { name }); $('playerName').value='';
+      refreshStammdaten(); loadStammdatenIntoEntry();
+    };
+    $('addFine').onclick = async ()=>{
+      if ((localStorage.getItem(LS.role)||'') !== 'Admin') return alert('Nur für Admin');
+      const name = $('fineName').value.trim(); const amount = Number($('fineAmount').value);
+      if(!name || !Number.isFinite(amount)) return alert('Vergehen & Betrag?');
+      await apiAdmin('upsert_fine', { name, amount }); $('fineName').value=''; $('fineAmount').value='';
+      refreshStammdaten(); loadStammdatenIntoEntry();
+    };
+
+    // ===== Init =====
+    loadCfg();
+  </script>
 </body>
 </html>

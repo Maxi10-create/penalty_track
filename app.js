@@ -27,9 +27,13 @@ function clearCfg(){
 }
 function updateRoleTag(){
   const role = localStorage.getItem(LS.role) || '–';
-  byId('roleTag').textContent = `Rolle: ${role}`;
+  byId('roleTag').textContent = `${role}`;
   const isAdmin = role === 'Admin';
-  document.querySelectorAll('.adminOnly').forEach(el => el.style.display = isAdmin ? '' : 'none');
+  // Admin tabs anzeigen/verstecken
+  const tab3 = byId('tab3btn');
+  const tab4 = byId('tab4btn');
+  if (tab3) tab3.style.display = isAdmin ? 'block' : 'none';
+  if (tab4) tab4.style.display = isAdmin ? 'block' : 'none';
 }
 
 // ---------- Role Screen ----------

@@ -30,17 +30,29 @@
   </header>
 
   <!-- Startscreen -->
-  <section id="screenRole" class="card">
-    <h2>Wer bist du?</h2>
-    <div class="row">
-      <button id="btnPlayer" class="primary">👤 Spieler</button>
-      <div class="adminBox">
-        <input id="adminPwd" type="password" placeholder="Admin-Passwort" />
-        <button id="btnAdmin" class="secondary">🛡️ Admin</button>
-        <p class="muted">Admin-Passwort: <code>admin2024</code></p>
+  <section id="screenRole" class="card welcome-screen">
+    <h2>👋 Willkommen bei Penalty Track</h2>
+    <p class="subtitle">Wähle deine Rolle aus:</p>
+    <div class="role-buttons">
+      <div class="role-card">
+        <button id="btnPlayer" class="role-btn player-btn">
+          <div class="role-icon">👤</div>
+          <div class="role-title">Spieler</div>
+          <div class="role-desc">Strafen anzeigen und einsehen</div>
+        </button>
+        <p class="role-hint">Einfach klicken - kein Passwort nötig</p>
+      </div>
+      <div class="role-card">
+        <div class="admin-section">
+          <input id="adminPwd" type="password" placeholder="Admin-Passwort eingeben" class="admin-input" />
+          <button id="btnAdmin" class="role-btn admin-btn">
+            <div class="role-icon">🛡️</div>
+            <div class="role-title">Admin</div>
+            <div class="role-desc">Strafen verwalten und erfassen</div>
+          </button>
+        </div>
       </div>
     </div>
-    <p class="muted">Spieler: nur klicken (intern fest „2024").</p>
   </section>
 
   <!-- Tabs -->

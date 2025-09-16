@@ -1,25 +1,95 @@
-*{box-sizing:border-box}
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#111}
-h1{margin:0 0 8px}
-header{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:10px}
-.card{border:1px solid #e5e7eb;border-radius:14px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin:12px 0;background:#fff}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-.flex1{flex:1}
-label{display:block;font-weight:600;margin-top:8px}
-input,select,button{font:inherit}
-input,select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
-button{padding:10px 14px;border:0;border-radius:10px;background:#0d6efd;color:#fff;font-weight:600;cursor:pointer}
-button.secondary{background:#6c757d}
-button.danger{background:#b3261e}
-.muted{color:#666}
-.kpi{font-size:2rem;font-weight:800}
-.table{width:100%;border-collapse:collapse}
-.table th,.table td{border-bottom:1px solid #eee;padding:8px;text-align:left}
-.tabs{display:flex;gap:8px;margin:10px 0}
-.tabs button{background:#e2e8f0;color:#111}
-.tabs button.active{background:#0d6efd;color:#fff}
-.hidden{display:none}
-.cfg summary{cursor:pointer}
-.roleTag{margin-left:8px;font-weight:700}
-.adminOnly{display:none}
-.adminBox{display:flex;gap:6px;align-items:center}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;max-width:1200px;margin:0 auto;padding:20px;background:#f8fafc;color:#1e293b;line-height:1.6}
+
+/* Header */
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding:20px;background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+h1{font-size:1.75rem;font-weight:700;color:#1e293b}
+
+/* Configuration */
+.cfg{display:flex;align-items:center;gap:16px}
+.cfg details{position:relative}
+.cfg summary{cursor:pointer;padding:8px 16px;background:#f1f5f9;border-radius:8px;font-weight:600;color:#475569;transition:all 0.2s}
+.cfg summary:hover{background:#e2e8f0}
+.cfg details[open] summary{background:#0ea5e9;color:white}
+.cfg details div{position:absolute;right:0;top:100%;z-index:10;background:white;border:1px solid #e2e8f0;border-radius:12px;padding:20px;box-shadow:0 10px 25px rgba(0,0,0,0.15);min-width:320px;margin-top:8px}
+.roleTag{background:#0ea5e9;color:white;padding:6px 12px;border-radius:20px;font-weight:600;font-size:0.875rem}
+
+/* Welcome Screen */
+.welcome-screen{text-align:center;max-width:700px;margin:40px auto;padding:40px}
+.welcome-screen h2{font-size:2rem;font-weight:700;color:#1e293b;margin-bottom:8px}
+.subtitle{font-size:1.1rem;color:#64748b;margin-bottom:40px}
+
+.role-buttons{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:32px}
+
+.role-card{background:white;border-radius:16px;padding:24px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);transition:transform 0.2s,box-shadow 0.2s}
+.role-card:hover{transform:translateY(-2px);box-shadow:0 8px 15px -3px rgba(0,0,0,0.15)}
+
+.role-btn{width:100%;padding:20px;border:none;border-radius:12px;cursor:pointer;transition:all 0.2s;text-align:center}
+.player-btn{background:linear-gradient(135deg,#0ea5e9,#06b6d4)}
+.admin-btn{background:linear-gradient(135deg,#8b5cf6,#a855f7)}
+.role-btn:hover{transform:scale(1.02);box-shadow:0 8px 15px -3px rgba(0,0,0,0.2)}
+
+.role-icon{font-size:2.5rem;margin-bottom:8px}
+.role-title{font-size:1.25rem;font-weight:700;color:white;margin-bottom:4px}
+.role-desc{font-size:0.9rem;color:rgba(255,255,255,0.9)}
+
+.role-hint{margin-top:12px;color:#64748b;font-size:0.875rem}
+
+.admin-section{display:flex;flex-direction:column;gap:12px}
+.admin-input{padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:1rem}
+
+/* Cards */
+.card{background:white;border-radius:16px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.1);margin:16px 0}
+
+/* Layout */
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:start}
+.flex1{flex:1;min-width:300px}
+
+/* Form Elements */
+label{display:block;font-weight:600;margin-bottom:6px;color:#374151}
+input,select{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:1rem;transition:border-color 0.2s}
+input:focus,select:focus{outline:none;border-color:#0ea5e9;box-shadow:0 0 0 3px rgba(14,165,233,0.1)}
+
+/* Buttons */
+button{padding:12px 20px;border:none;border-radius:8px;font-weight:600;cursor:pointer;transition:all 0.2s;font-size:1rem}
+button:hover{transform:translateY(-1px)}
+.primary,button:not(.secondary):not(.danger){background:#0ea5e9;color:white}
+.primary:hover,button:not(.secondary):not(.danger):hover{background:#0284c7}
+.secondary{background:#6b7280;color:white}
+.secondary:hover{background:#4b5563}
+.danger{background:#ef4444;color:white}
+.danger:hover{background:#dc2626}
+
+/* Tabs */
+.tabs{display:flex;gap:8px;margin:20px 0;background:white;padding:8px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.tabs button{background:transparent;color:#64748b;border-radius:8px}
+.tabs button.active{background:#0ea5e9;color:white;box-shadow:0 2px 4px rgba(14,165,233,0.3)}
+.tabs button:hover:not(.active){background:#f1f5f9}
+
+/* KPI */
+.kpi{font-size:3rem;font-weight:800;color:#0ea5e9;text-align:center}
+
+/* Table */
+.table{width:100%;border-collapse:collapse;margin:16px 0}
+.table th{background:#f8fafc;font-weight:700;color:#374151;padding:16px;text-align:left;border-bottom:2px solid #e2e8f0}
+.table td{padding:12px 16px;border-bottom:1px solid #f1f5f9}
+.table tbody tr:hover{background:#f8fafc}
+
+/* Lists */
+ul{list-style:none}
+ul li{background:#f8fafc;padding:12px 16px;border-radius:8px;margin:8px 0;display:flex;justify-content:between;align-items:center;gap:12px}
+ul li strong{color:#1e293b}
+ul li button{padding:6px 12px;font-size:0.875rem}
+
+/* Utilities */
+.hidden{display:none!important}
+.muted{color:#64748b;font-size:0.9rem}
+.right{margin-left:auto}
+
+/* Responsive */
+@media (max-width:768px){
+  .role-buttons{grid-template-columns:1fr;gap:16px}
+  .row{flex-direction:column}
+  header{flex-direction:column;gap:16px;text-align:center}
+  .tabs{flex-wrap:wrap}
+}

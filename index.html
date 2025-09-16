@@ -9,10 +9,19 @@
 <style>
 :root{--bg:#0b1220;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#60a5fa;--accent2:#22d3ee;--border:#1f2937}
 *{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),var(--bg);color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
-h1{margin:0;font-size:clamp(20px,3vw,28px)} .badge{font-weight:800;padding:4px 8px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220}
-main{padding:18px clamp(12px,3vw,28px);flex:1} footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid var(--border)}
+body{margin:0;background:
+  radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
+  radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),
+  var(--bg);
+  color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
+h1{margin:0;font-size:clamp(20px,3vw,28px)}
+.badge{font-weight:800;padding:4px 8px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220}
+main{padding:18px clamp(12px,3vw,28px);flex:1}
+footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid var(--border)}
 .card{background:rgba(17,24,39,.65);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(6px);margin:12px 0}
 .row{display:flex;gap:12px;flex-wrap:wrap}
 .input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0b1220;color:#e5e7eb;outline:none}
@@ -25,11 +34,11 @@ main{padding:18px clamp(12px,3vw,28px);flex:1} footer{padding:18px clamp(12px,3v
 .tabs{display:flex;gap:8px;margin:10px 0}
 .tabs .t{padding:10px 12px;border-radius:12px;background:#0b1220;color:#cbd5e1;border:1px solid var(--border);cursor:pointer}
 .tabs .t.active{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220;border:0}
-.hidden{display:none} .kpi{font-size:32px;font-weight:900}
+.hidden{display:none !important} .kpi{font-size:32px;font-weight:900}
 .split{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:900px){.split{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left} th{color:#cbd5e1;font-weight:700}
 .cfg details>summary{cursor:pointer;color:var(--muted)} .cfg-panel{margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-.adminOnly{display:none}
+.adminOnly{/* WICHTIG: NICHT verstecken – Sichtbarkeit steuert .hidden */}
 #errbar{position:fixed;right:12px;top:12px;background:#991b1b;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;z-index:9999;max-width:70vw}
 </style>
 </head>
@@ -42,9 +51,9 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <details>
       <summary>⚙️ Konfiguration</summary>
       <div class="cfg-panel card">
-        <label>API URL (Apps Script /exec)<input id="apiUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"/></label>
-        <label>API Key (alle)<input id="apiKey" class="input" placeholder="API Key"/></label>
-        <label>Admin Key (nur Admin)<input id="adminKey" class="input" placeholder="Admin Key"/></label>
+        <label>API URL (Apps Script /exec)<input id="apiUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"></label>
+        <label>API Key (alle)<input id="apiKey" class="input" placeholder="API Key"></label>
+        <label>Admin Key (nur Admin)<input id="adminKey" class="input" placeholder="Admin Key"></label>
         <div class="row"><button id="saveCfg" class="btn primary">Speichern</button><button id="clearCfg" class="btn secondary">Zurücksetzen</button><span id="cfgMsg" class="muted"></span></div>
       </div>
     </details>
@@ -66,7 +75,7 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
       <div class="card" style="flex:1">
         <h3>🛡️ Admin</h3>
         <p class="muted">Stammdaten pflegen & Strafen erfassen.</p>
-        <input id="adminPwd" class="input" type="password" placeholder="Admin-Passwort eingeben"/>
+        <input id="adminPwd" class="input" type="password" placeholder="Admin-Passwort eingeben">
         <button id="btnAdmin" class="btn secondary">Als Admin anmelden</button>
         <span id="loginMsg" class="muted"></span>
       </div>
@@ -107,7 +116,7 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <div class="row">
       <label style="min-width:260px">Spieler (Mehrfachauswahl)<select id="entryPlayers" class="input" multiple size="8" style="height:220px"></select></label>
       <label style="min-width:260px">Strafe (aus Stammdaten)<select id="entryFine" class="input"></select></label>
-      <label style="min-width:220px">Zeitstempel<input id="entryTs" class="input" type="datetime-local"/></label>
+      <label style="min-width:220px">Zeitstempel<input id="entryTs" class="input" type="datetime-local"></label>
     </div>
     <div class="row"><button id="saveEntry" class="btn primary">➕ Speichern</button><span id="msgEntry" class="muted"></span></div>
   </section>
@@ -118,7 +127,7 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
       <div class="card">
         <h3>Spielerliste</h3>
         <div class="row">
-          <input id="playerName" class="input" placeholder="Neuer/zu ändernder Spielername"/>
+          <input id="playerName" class="input" placeholder="Neuer/zu ändernder Spielername">
           <button id="addPlayer" class="btn primary">Speichern / Upsert</button>
         </div>
         <div class="card" style="margin-top:12px;overflow:auto">
@@ -128,8 +137,8 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
       <div class="card">
         <h3>Strafenliste (Vergehen & Betrag €)</h3>
         <div class="row">
-          <input id="fineName" class="input" placeholder="Vergehen"/>
-          <input id="fineAmount" class="input" type="number" step="0.01" placeholder="Betrag (€)"/>
+          <input id="fineName" class="input" placeholder="Vergehen">
+          <input id="fineAmount" class="input" type="number" step="0.01" placeholder="Betrag (€)">
           <button id="addFine" class="btn primary">Speichern / Upsert</button>
         </div>
         <div class="card" style="margin-top:12px;overflow:auto">
@@ -144,8 +153,8 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
 
 <script>
 /* ===== Fehler-Banner ===== */
-function showErr(msg){ const b=document.getElementById('errbar'); b.textContent=msg; b.style.display='block'; console.error('[PenaltyTrack]', msg); }
-window.onerror = (m,s,l,c,e)=>{ showErr(String(m)); };
+function showErr(msg){const b=document.getElementById('errbar');b.textContent=msg;b.style.display='block';console.error('[PenaltyTrack]',msg);}
+window.onerror=(m)=>{showErr(String(m));};
 
 /* ===== Utilities ===== */
 const $=id=>document.getElementById(id);
@@ -160,41 +169,40 @@ function updateRoleTag(){
   const role=localStorage.getItem(LS.role)||'–';
   $('roleTag').textContent='Rolle: '+role;
   const isAdmin=(role==='Admin');
+  // Admin-Elemente über .hidden steuern
   qsa('.adminOnly').forEach(el=>el.classList.toggle('hidden',!isAdmin));
 }
 function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKey').value=localStorage.getItem(LS.key)||''; $('adminKey').value=localStorage.getItem(LS.adm)||''; updateRoleTag(); }
-function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm,$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>$('cfgMsg').textContent='',1200); }
+function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm,$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200); }
 function clearCfg(){ localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm); updateRoleTag(); }
 
 /* ===== DOM Ready ===== */
-document.addEventListener('DOMContentLoaded', ()=>{
-  $('saveCfg').onclick = saveCfg;
-  $('clearCfg').onclick = ()=>{ clearCfg(); $('apiUrl').value=''; $('apiKey').value=''; $('adminKey').value=''; };
+document.addEventListener('DOMContentLoaded',()=>{
+  $('saveCfg').onclick=saveCfg;
+  $('clearCfg').onclick=()=>{clearCfg();$('apiUrl').value='';$('apiKey').value='';$('adminKey').value='';};
 
-  $('btnPlayer').onclick = ()=>{
-    localStorage.setItem(LS.role,'Spieler'); updateRoleTag(); showApp();
-  };
-  $('btnAdmin').onclick = ()=>{
+  $('btnPlayer').onclick=()=>{localStorage.setItem(LS.role,'Spieler');updateRoleTag();showApp();};
+  $('btnAdmin').onclick=()=>{
     const p=$('adminPwd').value.trim();
-    if(p!==ADMIN_PWD){ $('loginMsg').textContent='Falsches Passwort'; return; }
-    $('loginMsg').textContent=''; localStorage.setItem(LS.role,'Admin'); updateRoleTag(); showApp();
+    if(p!==ADMIN_PWD){$('loginMsg').textContent='Falsches Passwort';return;}
+    $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();
   };
 
-  qsa('#tabs .t').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
+  qsa('#tabs .t').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   loadCfg();
 });
 
-/* ===== UI switcher ===== */
+/* ===== UI Switcher ===== */
 function showApp(){
   $('screenRole').classList.add('hidden');
   $('tabs').classList.remove('hidden');
   switchTab('tab1');
 }
 function switchTab(id){
-  qsa('main section').forEach(s=> s.classList.add('hidden'));
+  qsa('main section').forEach(s=>s.classList.add('hidden'));
   $('tabs').classList.remove('hidden');
-  qsa('#tabs .t').forEach(b=> b.classList.toggle('active', b.dataset.tab===id));
-  const sec=$(id); if(!sec){ showErr('Tab nicht gefunden: '+id); return; }
+  qsa('#tabs .t').forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+  const sec=$(id); if(!sec){showErr('Tab nicht gefunden: '+id);return;}
   sec.classList.remove('hidden');
   if(id==='tab1') refreshDashboard();
   if(id==='tab2') refreshDetail();
@@ -207,67 +215,59 @@ function cfg(){
   const api=(localStorage.getItem(LS.api)||'').trim();
   const key=(localStorage.getItem(LS.key)||'').trim();
   const adm=(localStorage.getItem(LS.adm)||'').trim();
-  if(!api || !key){ showErr('Bitte API URL & Key speichern (⚙️)'); throw new Error('Konfiguration unvollständig'); }
+  if(!api||!key){showErr('Bitte API-URL & API-Key oben unter ⚙️ speichern.');throw new Error('Config fehlt');}
   return {api,key,adm};
 }
-async function apiGet(params={}){
+async function apiGet(params){
   const {api,key}=cfg(); const u=new URL(api); u.searchParams.set('apiKey',key);
-  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  if(params){Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));}
   const r=await fetch(u.toString()); if(!r.ok) throw new Error('GET '+r.status); return r.json();
 }
 async function apiPost(body){
-  const {api,key}=cfg();
-  const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
+  const {api,key}=cfg(); const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
   if(!r.ok) throw new Error('POST '+r.status); return r.json();
 }
-async function apiAdmin(action, body){
+async function apiAdmin(action,body){
   const {api,key,adm}=cfg();
   const r=await fetch(api+'?action='+encodeURIComponent(action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,adminKey:adm,...body})});
   if(!r.ok) throw new Error(action+' '+r.status); return r.json();
 }
 
 /* ===== Tab 1: Dashboard ===== */
-let lineChart;
+let lineChart=null;
 async function refreshDashboard(){
   try{
-    const data=await apiGet({view:'all'});
-    if(!data.ok) throw new Error(data.error||'API-Fehler');
+    const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
     const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
     $('countSum').textContent=rows.length+' Einträge';
-    const total=rows.reduce((a,r)=>a+(Number(r.amount)||0),0);
-    $('pott').textContent=euro(total);
+    const total=rows.reduce((a,r)=>a+(Number(r.amount)||0),0); $('pott').textContent=euro(total);
 
-    const per={}; rows.forEach(r=>{ const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0); });
+    const per={}; rows.forEach(r=>{const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0);});
     const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
-    const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{ const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li); });
+    const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=n+': '+amt.toFixed(2)+' €'; ol.appendChild(li);});
 
     const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:Number(r.amount)||0})).sort((a,b)=>a.t-b.t);
-    let s=0; const labels=[],vals=[]; pts.forEach(p=>{ s+=p.v; labels.push(p.t.toLocaleDateString()); vals.push(s); });
-    const ctx=$('chart').getContext('2d');
-    if(lineChart) lineChart.destroy();
+    let s=0; const labels=[],vals=[]; pts.forEach(p=>{s+=p.v;labels.push(p.t.toLocaleDateString());vals.push(s);});
+    const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
     lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
-  }catch(e){ showErr(String(e.message||e)); }
+  }catch(e){showErr(String(e.message||e));}
 }
 
 /* ===== Tab 2: Detail ===== */
 async function refreshDetail(){
   try{
-    const data=await apiGet({view:'all'});
-    if(!data.ok) throw new Error(data.error||'API-Fehler');
-    const players=data.players||[];
-    const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
+    const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
+    const players=data.players||[]; const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
     const sel=$('filterPlayer'); sel.innerHTML='';
-    players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; sel.appendChild(o); });
-    sel.onchange=()=>fillDetail(rows, sel.value);
-    if(players[0]) fillDetail(rows, players[0].name); else { $('detailBody').innerHTML=''; $('detailSum').textContent=euro(0); }
-  }catch(e){ showErr(String(e.message||e)); }
+    players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; sel.appendChild(o);});
+    sel.onchange=()=>fillDetail(rows,sel.value);
+    if(players[0]) fillDetail(rows,players[0].name); else{$('detailBody').innerHTML='';$('detailSum').textContent=euro(0);}
+  }catch(e){showErr(String(e.message||e));}
 }
-function fillDetail(rows, name){
-  const body=$('detailBody'); body.innerHTML='';
-  let sum=0;
+function fillDetail(rows,name){
+  const body=$('detailBody'); body.innerHTML=''; let sum=0;
   rows.filter(r=>(r.name||'')===name).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
-    sum+=Number(r.amount)||0;
-    const tr=document.createElement('tr');
+    sum+=Number(r.amount)||0; const tr=document.createElement('tr');
     tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
     body.appendChild(tr);
   });
@@ -281,22 +281,21 @@ async function loadEntryMeta(){
     const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
     const players=meta.players||[], fines=meta.fines||[];
     const selP=$('entryPlayers'); selP.innerHTML='';
-    players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o); });
+    players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o);});
     const selF=$('entryFine'); selF.innerHTML='';
-    fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0; selF.appendChild(o); });
+    fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0; selF.appendChild(o);});
 
-    $('saveEntry').onclick = async ()=>{
+    $('saveEntry').onclick=async()=>{
       try{
         const names=[...selP.selectedOptions].map(o=>o.value);
-        const opt=selF.selectedOptions[0];
-        const fine=opt?.value||''; const amount=Number(opt?.dataset.amount||0);
+        const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; const amount=opt?Number(opt.dataset.amount||0):0;
         const ts=$('entryTs').value?new Date($('entryTs').value).toISOString():new Date().toISOString();
-        if(!names.length||!fine) return alert('Bitte Spieler & Strafe wählen');
+        if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
         for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
-        $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>$('msgEntry').textContent='',1200);
-      }catch(err){ showErr(String(err.message||err)); }
+        $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>{$('msgEntry').textContent='';},1200);
+      }catch(err){showErr(String(err.message||err));}
     };
-  }catch(e){ showErr(String(e.message||e)); }
+  }catch(e){showErr(String(e.message||e));}
 }
 
 /* ===== Tab 4: Stammdaten (Admin) ===== */
@@ -305,23 +304,23 @@ async function refreshMetaTables(){
   try{
     const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
     drawPlayersTable(meta.players||[]); drawFinesTable(meta.fines||[]);
-    $('addPlayer').onclick = async ()=>{
-      const name=$('playerName').value.trim(); if(!name) return alert('Name?');
+    $('addPlayer').onclick=async()=>{
+      const name=$('playerName').value.trim(); if(!name){alert('Name?');return;}
       await apiAdmin('upsert_player',{name}); $('playerName').value=''; await refreshMetaTables(); await loadEntryMeta();
     };
-    $('addFine').onclick = async ()=>{
+    $('addFine').onclick=async()=>{
       const name=$('fineName').value.trim(); const amount=Number($('fineAmount').value);
-      if(!name || !Number.isFinite(amount)) return alert('Vergehen & Betrag?');
+      if(!name||!Number.isFinite(amount)){alert('Vergehen & Betrag?');return;}
       await apiAdmin('upsert_fine',{name,amount}); $('fineName').value=''; $('fineAmount').value=''; await refreshMetaTables(); await loadEntryMeta();
     };
-  }catch(e){ showErr(String(e.message||e)); }
+  }catch(e){showErr(String(e.message||e));}
 }
 function drawPlayersTable(list){
   const tb=$('playersTable'); tb.innerHTML='';
   list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${p.name}</td><td><button class="btn danger" data-del="${p.name}">Löschen</button></td>`;
-    tr.querySelector('[data-del]').onclick = async ()=>{
+    tr.querySelector('[data-del]').onclick=async()=>{
       if(!confirm('Spieler löschen: '+p.name+'?')) return;
       await apiAdmin('delete_player',{name:p.name}); await refreshMetaTables(); await loadEntryMeta();
     };
@@ -333,7 +332,7 @@ function drawFinesTable(list){
   list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>{
     const tr=document.createElement('tr');
     tr.innerHTML=`<td>${f.name}</td><td>${(Number(f.amount)||0).toFixed(2)}</td><td><button class="btn danger" data-del="${f.name}">Löschen</button></td>`;
-    tr.querySelector('[data-del]').onclick = async ()=>{
+    tr.querySelector('[data-del]').onclick=async()=>{
       if(!confirm('Strafe löschen: '+f.name+'?')) return;
       await apiAdmin('delete_fine',{name:f.name}); await refreshMetaTables(); await loadEntryMeta();
     };

@@ -29,18 +29,37 @@ function updateRoleTag(){
   const role = localStorage.getItem(LS.role) || '–';
   byId('roleTag').textContent = `${role}`;
   const isAdmin = role === 'Admin';
-  // Admin tabs anzeigen/verstecken
+  // Admin tabs anzeigen/verstecken mit CSS-Klassen
   const tab3 = byId('tab3btn');
   const tab4 = byId('tab4btn');
-  if (tab3) tab3.style.display = isAdmin ? 'block' : 'none';
-  if (tab4) tab4.style.display = isAdmin ? 'block' : 'none';
+  if (tab3) {
+    if (isAdmin) {
+      tab3.classList.add('show');
+    } else {
+      tab3.classList.remove('show');
+    }
+  }
+  if (tab4) {
+    if (isAdmin) {
+      tab4.classList.add('show');
+    } else {
+      tab4.classList.remove('show');
+    }
+  }
+  
+  // Debug-Log hinzufügen
+  console.log('Role:', role, 'isAdmin:', isAdmin, 'tab3:', tab3, 'tab4:', tab4);
 }
 
 // ---------- Role Screen ----------
 function showApp(){
   byId('screenRole').classList.add('hidden');
   byId('tabs').classList.remove('hidden');
-  switchTab('tab1');
+  // Warten bis tabs sichtbar sind, dann updateRoleTag aufrufen
+  setTimeout(() => {
+    updateRoleTag();
+    switchTab('tab1');
+  }, 100);
 }
 byId('btnPlayer').onclick = () => {
   // Spieler: "nur klicken" (internes PW, kein Prompt)
@@ -49,7 +68,9 @@ byId('btnPlayer').onclick = () => {
 byId('btnAdmin').onclick = () => {
   const pwd = byId('adminPwd').value.trim();
   if (pwd !== ADMIN_PWD) { alert('Falsches Admin-Passwort'); return; }
-  localStorage.setItem(LS.role, 'Admin'); updateRoleTag(); showApp();
+  localStorage.setItem(LS.role, 'Admin'); 
+  showApp();
+  updateRoleTag(); // Nach showApp aufrufen
 };
 
 // ---------- Tabs ----------
@@ -270,7 +291,20 @@ byId('addFine').onclick = async ()=>{
 
 // ---------- Config events ----------
 byId('saveCfg').onclick = ()=> { saveCfg(); alert('Gespeichert'); };
-byId('clearCfg').onclick = ()=> { clearCfg(); alert('Zurückgesetzt'); };
+byId('clearCfg').onclick = ()=> { 
+  clearCfg(); 
+  localStorage.removeItem(LS.role);
+  loadKeys(); 
+  alert('Zurückgesetzt'); 
+  location.reload();
+};
+
+function loadKeys(){
+  byId('apiUrl').value = '';
+  byId('apiKey').value = '';
+  byId('adminKey').value = '';
+}
 
 // Init
 loadCfg();
+console.log('App initialized, current role:', localStorage.getItem(LS.role));

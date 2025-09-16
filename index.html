@@ -13,17 +13,21 @@
     <div class="cfg">
       <details>
         <summary>⚙️ Konfiguration</summary>
-        <label>API URL (Apps Script /exec)
-          <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
-        </label>
-        <label>API Key (alle)
-          <input id="apiKey" placeholder="API Key" />
-        </label>
-        <label>Admin Key (nur Admin)
-          <input id="adminKey" placeholder="Admin Key" />
-        </label>
-        <button id="saveCfg">Speichern</button>
-        <button id="clearCfg" class="secondary">Zurücksetzen</button>
+        <div>
+          <label>API URL (Apps Script /exec)
+            <input id="apiUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+          </label>
+          <label>API Key (alle)
+            <input id="apiKey" placeholder="API Key" />
+          </label>
+          <label>Admin Key (nur Admin)
+            <input id="adminKey" placeholder="Admin Key" />
+          </label>
+          <div style="margin-top:16px;display:flex;gap:8px;">
+            <button id="saveCfg">Speichern</button>
+            <button id="clearCfg" class="secondary">Zurücksetzen</button>
+          </div>
+        </div>
       </details>
       <span class="roleTag" id="roleTag">Rolle: –</span>
     </div>

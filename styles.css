@@ -83,6 +83,8 @@ ul li button{padding:6px 12px;font-size:0.875rem}
 
 /* Utilities */
 .hidden{display:none!important}
+.adminOnly{display:none}
+.adminOnly.show{display:block!important}
 .muted{color:#64748b;font-size:0.9rem}
 .right{margin-left:auto}
 

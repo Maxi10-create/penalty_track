@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Penalty Track</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{--bg:#0b1220;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#60a5fa;--accent2:#22d3ee;--border:#1f2937}
 *{box-sizing:border-box} html,body{height:100%}
@@ -15,10 +15,12 @@ h1{margin:0;font-size:clamp(20px,3vw,28px)} .badge{font-weight:800;padding:4px 8
 main{padding:18px clamp(12px,3vw,28px);flex:1} footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid var(--border)}
 .card{background:rgba(17,24,39,.65);border:1px solid var(--border);border-radius:16px;padding:16px;backdrop-filter:blur(6px);margin:12px 0}
 .row{display:flex;gap:12px;flex-wrap:wrap}
-.input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0b1220;color:var(--text);outline:none}
+.input,select{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0b1220;color:#e5e7eb;outline:none}
+.input:focus,select:focus{border-color:var(--accent)}
 .btn{padding:10px 14px;border:0;border-radius:12px;cursor:pointer;font-weight:700}
 .btn.primary{color:#0b1220;background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .btn.secondary{background:#334155;color:#e5e7eb}
+.btn.danger{background:linear-gradient(90deg,#fb7185,#f43f5e);color:#0b1220}
 .muted{color:var(--muted)} .roleTag{font-weight:800;color:var(--muted)}
 .tabs{display:flex;gap:8px;margin:10px 0}
 .tabs .t{padding:10px 12px;border-radius:12px;background:#0b1220;color:#cbd5e1;border:1px solid var(--border);cursor:pointer}
@@ -164,36 +166,21 @@ function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKe
 function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm,$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>$('cfgMsg').textContent='',1200); }
 function clearCfg(){ localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm); updateRoleTag(); }
 
-/* ===== Buttons sicher anschließen ===== */
+/* ===== DOM Ready ===== */
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Existenz prüfen
-  const req = ['btnPlayer','btnAdmin','saveCfg','clearCfg','tabs'];
-  for(const id of req){ if(!$(id)) return showErr('Element fehlt: #'+id); }
-
   $('saveCfg').onclick = saveCfg;
   $('clearCfg').onclick = ()=>{ clearCfg(); $('apiUrl').value=''; $('apiKey').value=''; $('adminKey').value=''; };
 
   $('btnPlayer').onclick = ()=>{
-    localStorage.setItem(LS.role,'Spieler');
-    updateRoleTag();
-    showApp();
-    // Sichtbarer Funktionscheck:
-    alert('Angemeldet als Spieler ✅');
+    localStorage.setItem(LS.role,'Spieler'); updateRoleTag(); showApp();
   };
-
   $('btnAdmin').onclick = ()=>{
-    const p = $('adminPwd').value.trim();
-    if(p !== ADMIN_PWD){ $('loginMsg').textContent='Falsches Passwort'; return; }
-    $('loginMsg').textContent='';
-    localStorage.setItem(LS.role,'Admin');
-    updateRoleTag();
-    showApp();
-    alert('Angemeldet als Admin ✅');
+    const p=$('adminPwd').value.trim();
+    if(p!==ADMIN_PWD){ $('loginMsg').textContent='Falsches Passwort'; return; }
+    $('loginMsg').textContent=''; localStorage.setItem(LS.role,'Admin'); updateRoleTag(); showApp();
   };
 
-  // Tab-Navigation
   qsa('#tabs .t').forEach(b=> b.onclick = ()=> switchTab(b.dataset.tab));
-
   loadCfg();
 });
 
@@ -207,8 +194,7 @@ function switchTab(id){
   qsa('main section').forEach(s=> s.classList.add('hidden'));
   $('tabs').classList.remove('hidden');
   qsa('#tabs .t').forEach(b=> b.classList.toggle('active', b.dataset.tab===id));
-  const sec = $(id);
-  if(!sec){ showErr('Tab nicht gefunden: '+id); return; }
+  const sec=$(id); if(!sec){ showErr('Tab nicht gefunden: '+id); return; }
   sec.classList.remove('hidden');
   if(id==='tab1') refreshDashboard();
   if(id==='tab2') refreshDetail();
@@ -225,76 +211,138 @@ function cfg(){
   return {api,key,adm};
 }
 async function apiGet(params={}){
-  const {api,key}=cfg();
-  const u=new URL(api); u.searchParams.set('apiKey',key);
+  const {api,key}=cfg(); const u=new URL(api); u.searchParams.set('apiKey',key);
   Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
-  const r=await fetch(u.toString());
-  if(!r.ok) throw new Error('GET '+r.status);
-  return r.json();
+  const r=await fetch(u.toString()); if(!r.ok) throw new Error('GET '+r.status); return r.json();
 }
 async function apiPost(body){
   const {api,key}=cfg();
   const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
-  if(!r.ok) throw new Error('POST '+r.status);
-  return r.json();
+  if(!r.ok) throw new Error('POST '+r.status); return r.json();
 }
 async function apiAdmin(action, body){
   const {api,key,adm}=cfg();
   const r=await fetch(api+'?action='+encodeURIComponent(action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,adminKey:adm,...body})});
-  if(!r.ok) throw new Error(action+' '+r.status);
-  return r.json();
+  if(!r.ok) throw new Error(action+' '+r.status); return r.json();
 }
 
-/* ===== Dashboard (Minimalfunktion, damit du Feedback siehst) ===== */
+/* ===== Tab 1: Dashboard ===== */
 let lineChart;
 async function refreshDashboard(){
   try{
-    const data = await apiGet({view:'all'});
+    const data=await apiGet({view:'all'});
     if(!data.ok) throw new Error(data.error||'API-Fehler');
     const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
-    $('countSum').textContent = rows.length+' Einträge';
-    const total = rows.reduce((a,r)=>a+(Number(r.amount)||0),0);
-    $('pott').textContent = euro(total);
-    const per = {};
-    rows.forEach(r=>{ per[r.name]= (per[r.name]||0) + (Number(r.amount)||0); });
-    const top = Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    $('countSum').textContent=rows.length+' Einträge';
+    const total=rows.reduce((a,r)=>a+(Number(r.amount)||0),0);
+    $('pott').textContent=euro(total);
+
+    const per={}; rows.forEach(r=>{ const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0); });
+    const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
     const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{ const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li); });
+
     const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:Number(r.amount)||0})).sort((a,b)=>a.t-b.t);
-    let s=0; const labels=[], vals=[]; pts.forEach(p=>{ s+=p.v; labels.push(p.t.toLocaleDateString()); vals.push(s); });
+    let s=0; const labels=[],vals=[]; pts.forEach(p=>{ s+=p.v; labels.push(p.t.toLocaleDateString()); vals.push(s); });
     const ctx=$('chart').getContext('2d');
     if(lineChart) lineChart.destroy();
     lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
-  }catch(err){ showErr(String(err.message||err)); }
+  }catch(e){ showErr(String(e.message||e)); }
 }
 
-/* ===== Detail ===== */
+/* ===== Tab 2: Detail ===== */
 async function refreshDetail(){
   try{
     const data=await apiGet({view:'all'});
     if(!data.ok) throw new Error(data.error||'API-Fehler');
-    const players=data.players||[]; const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
+    const players=data.players||[];
+    const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
     const sel=$('filterPlayer'); sel.innerHTML='';
     players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; sel.appendChild(o); });
     sel.onchange=()=>fillDetail(rows, sel.value);
-    if(players[0]) fillDetail(rows, players[0].name);
-  }catch(err){ showErr(String(err.message||err)); }
+    if(players[0]) fillDetail(rows, players[0].name); else { $('detailBody').innerHTML=''; $('detailSum').textContent=euro(0); }
+  }catch(e){ showErr(String(e.message||e)); }
 }
 function fillDetail(rows, name){
   const body=$('detailBody'); body.innerHTML='';
   let sum=0;
-  rows.filter(r=>r.name===name).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
-    sum += Number(r.amount)||0;
+  rows.filter(r=>(r.name||'')===name).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
+    sum+=Number(r.amount)||0;
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.name}</td><td>${r.fine}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
+    tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
     body.appendChild(tr);
   });
-  $('detailSum').textContent = euro(sum);
+  $('detailSum').textContent=euro(sum);
 }
 
-/* ===== Stammdaten & Erfassung (wie zuvor; ausgelassen, bis Grundfunktion klappt) ===== */
-async function loadEntryMeta(){ /* lädt Players/Fines für Tab 3 – wie zuvor */ }
-async function refreshMetaTables(){ /* zeichnet Tabellen in Tab 4 – wie zuvor */ }
+/* ===== Tab 3: Erfassung (Admin) ===== */
+async function loadEntryMeta(){
+  if((localStorage.getItem(LS.role)||'')!=='Admin') return;
+  try{
+    const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
+    const players=meta.players||[], fines=meta.fines||[];
+    const selP=$('entryPlayers'); selP.innerHTML='';
+    players.forEach(p=>{ const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o); });
+    const selF=$('entryFine'); selF.innerHTML='';
+    fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0; selF.appendChild(o); });
 
+    $('saveEntry').onclick = async ()=>{
+      try{
+        const names=[...selP.selectedOptions].map(o=>o.value);
+        const opt=selF.selectedOptions[0];
+        const fine=opt?.value||''; const amount=Number(opt?.dataset.amount||0);
+        const ts=$('entryTs').value?new Date($('entryTs').value).toISOString():new Date().toISOString();
+        if(!names.length||!fine) return alert('Bitte Spieler & Strafe wählen');
+        for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
+        $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>$('msgEntry').textContent='',1200);
+      }catch(err){ showErr(String(err.message||err)); }
+    };
+  }catch(e){ showErr(String(e.message||e)); }
+}
+
+/* ===== Tab 4: Stammdaten (Admin) ===== */
+async function refreshMetaTables(){
+  if((localStorage.getItem(LS.role)||'')!=='Admin') return;
+  try{
+    const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
+    drawPlayersTable(meta.players||[]); drawFinesTable(meta.fines||[]);
+    $('addPlayer').onclick = async ()=>{
+      const name=$('playerName').value.trim(); if(!name) return alert('Name?');
+      await apiAdmin('upsert_player',{name}); $('playerName').value=''; await refreshMetaTables(); await loadEntryMeta();
+    };
+    $('addFine').onclick = async ()=>{
+      const name=$('fineName').value.trim(); const amount=Number($('fineAmount').value);
+      if(!name || !Number.isFinite(amount)) return alert('Vergehen & Betrag?');
+      await apiAdmin('upsert_fine',{name,amount}); $('fineName').value=''; $('fineAmount').value=''; await refreshMetaTables(); await loadEntryMeta();
+    };
+  }catch(e){ showErr(String(e.message||e)); }
+}
+function drawPlayersTable(list){
+  const tb=$('playersTable'); tb.innerHTML='';
+  list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${p.name}</td><td><button class="btn danger" data-del="${p.name}">Löschen</button></td>`;
+    tr.querySelector('[data-del]').onclick = async ()=>{
+      if(!confirm('Spieler löschen: '+p.name+'?')) return;
+      await apiAdmin('delete_player',{name:p.name}); await refreshMetaTables(); await loadEntryMeta();
+    };
+    tb.appendChild(tr);
+  });
+}
+function drawFinesTable(list){
+  const tb=$('finesTable'); tb.innerHTML='';
+  list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${f.name}</td><td>${(Number(f.amount)||0).toFixed(2)}</td><td><button class="btn danger" data-del="${f.name}">Löschen</button></td>`;
+    tr.querySelector('[data-del]').onclick = async ()=>{
+      if(!confirm('Strafe löschen: '+f.name+'?')) return;
+      await apiAdmin('delete_fine',{name:f.name}); await refreshMetaTables(); await loadEntryMeta();
+    };
+    tb.appendChild(tr);
+  });
+}
+
+/* ===== Init ===== */
+loadCfg();
 </script>
 </body>
 </html>

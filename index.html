@@ -39,7 +39,6 @@ footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid
 @media(max-width:900px){.split{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left} th{color:#cbd5e1;font-weight:700}
 .cfg details>summary{cursor:pointer;color:var(--muted)} .cfg-panel{margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-.adminOnly{/* NICHT verstecken – .hidden steuert Sichtbarkeit */}
 #errbar{position:fixed;right:12px;top:12px;background:#991b1b;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;z-index:9999;max-width:70vw}
 </style>
 </head>
@@ -129,6 +128,15 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
       <label style="min-width:220px">Datum<input id="entryDate" class="input" type="date"></label>
     </div>
     <div class="row"><button id="saveEntry" class="btn primary">➕ Speichern</button><span id="msgEntry" class="muted"></span></div>
+
+    <!-- Neue Tabelle: letzte Einträge -->
+    <div class="card" style="margin-top:14px;overflow:auto">
+      <h4>Letzte Einträge</h4>
+      <table>
+        <thead><tr><th>Datum</th><th>Spieler</th><th>Vergehen</th><th>Betrag (€)</th></tr></thead>
+        <tbody id="recentEntries"></tbody>
+      </table>
+    </div>
   </section>
 
   <!-- Tab 4 -->
@@ -170,6 +178,8 @@ window.onerror=(m)=>{showErr(String(m));};
 const $=id=>document.getElementById(id);
 const qsa=(s,el=document)=>Array.from(el.querySelectorAll(s));
 const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+// robuste Zahl-Parse (akzeptiert "5", "5.00", "5,00")
+const num=v=>{if(v==null) return 0; const s=String(v).replace(/\./g,'.').replace(',','.'); const x=parseFloat(s); return Number.isFinite(x)?x:0;}
 
 /* ===== Config & Role ===== */
 const LS={api:'pt_api',key:'pt_key',adm:'pt_adm',role:'pt_role'};
@@ -215,7 +225,7 @@ function switchTab(id){
   sec.classList.remove('hidden');
   if(id==='tab1') refreshDashboard();
   if(id==='tab2') refreshDetail();
-  if(id==='tab3') loadEntryMeta();
+  if(id==='tab3'){ loadEntryMeta(); refreshRecentEntries(); }
   if(id==='tab4') refreshMetaTables();
 }
 
@@ -270,7 +280,7 @@ async function apiAdmin(action,body){
 function computeTop3ByFine(rows,fineName){
   const per={};
   rows.filter(r=>(r.fine||'')===fineName).forEach(r=>{
-    const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0);
+    const k=r.name||''; per[k]=(per[k]||0)+num(r.amount);
   });
   return Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
 }
@@ -279,17 +289,17 @@ async function refreshDashboard(){
   try{
     const data=await apiGet({view:'all'});
     if(!data.ok) throw new Error(data.error||'API');
-    const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
+    const rows=(data.rows||[]).map(r=>({...r,amount:num(r.amount)}));
     const fines=(data.fines||[]);
 
     $('countSum').textContent=rows.length+' Einträge';
-    const total=rows.reduce((a,r)=>a+(Number(r.amount)||0),0); $('pott').textContent=euro(total);
+    const total=rows.reduce((a,r)=>a+num(r.amount),0); $('pott').textContent=euro(total);
 
-    const per={}; rows.forEach(r=>{const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0);});
+    const per={}; rows.forEach(r=>{const k=r.name||''; per[k]=(per[k]||0)+num(r.amount);});
     const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
     const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);});
 
-    const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:Number(r.amount)||0})).sort((a,b)=>a.t-b.t);
+    const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:num(r.amount)})).sort((a,b)=>a.t-b.t);
     let s=0; const labels=[],vals=[]; pts.forEach(p=>{s+=p.v;labels.push(p.t.toLocaleDateString());vals.push(s);});
     const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
     lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
@@ -298,7 +308,7 @@ async function refreshDashboard(){
     const sel=$('filterFineTop');
     if (sel && !sel.dataset.filled) {
       sel.innerHTML='';
-      fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; sel.appendChild(o); });
+      fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${num(f.amount).toFixed(2)} €)`; sel.appendChild(o); });
       sel.dataset.filled='1';
       sel.onchange=()=>updateTop3Fine(rows, sel.value);
     }
@@ -317,7 +327,7 @@ function updateTop3Fine(rows,fineName){
 async function refreshDetail(){
   try{
     const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
-    const players=data.players||[]; const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
+    const players=data.players||[]; const rows=(data.rows||[]).map(r=>({...r,amount:num(r.amount)}));
     const sel=$('filterPlayer'); sel.innerHTML='';
     players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; sel.appendChild(o);});
     sel.onchange=()=>fillDetail(rows,sel.value);
@@ -327,25 +337,28 @@ async function refreshDetail(){
 function fillDetail(rows,name){
   const body=$('detailBody'); body.innerHTML=''; let sum=0;
   rows.filter(r=>(r.name||'')===name).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
-    sum+=Number(r.amount)||0; const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(r.ts).toLocaleDateString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
+    sum+=num(r.amount); const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${new Date(r.ts).toLocaleDateString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${num(r.amount).toFixed(2)}</td>`;
     body.appendChild(tr);
   });
   $('detailSum').textContent=euro(sum);
 }
 
 /* ===== Tab 3: Erfassung (Admin) ===== */
+let FINES_MAP = new Map();
 async function loadEntryMeta(){
   if((localStorage.getItem(LS.role)||'')!=='Admin') return;
   try{
     const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
     const players=meta.players||[], fines=meta.fines||[];
 
+    FINES_MAP = new Map(fines.map(f=>[f.name, num(f.amount)]));
+
     const selP=$('entryPlayers'); selP.innerHTML='';
     players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o);});
 
     const selF=$('entryFine'); selF.innerHTML='';
-    fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0; selF.appendChild(o);});
+    fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${num(f.amount).toFixed(2)} €)`; o.dataset.amount=num(f.amount); selF.appendChild(o);});
 
     // Datum default = heute
     const d=new Date(); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0');
@@ -354,16 +367,33 @@ async function loadEntryMeta(){
     $('saveEntry').onclick=async()=>{
       try{
         const names=[...selP.selectedOptions].map(o=>o.value);
-        const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; const amount=opt?Number(opt.dataset.amount||0):0;
+        const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; 
+        // Betrag robust aus Map (falls dataset leer)
+        const amount=opt?num(opt.dataset.amount): (FINES_MAP.has(fine)?FINES_MAP.get(fine):0);
         const dateStr=$('entryDate').value;
         if(!dateStr){alert('Bitte Datum wählen');return;}
         const ts=new Date(dateStr+'T00:00:00').toISOString();
         if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
         for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
         $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>{$('msgEntry').textContent='';},1200);
-        await refreshDashboard(); await refreshDetail();
+        await refreshDashboard(); await refreshDetail(); await refreshRecentEntries();
       }catch(err){showErr(String(err.message||err));}
     };
+  }catch(e){showErr(String(e.message||e));}
+}
+
+/* Tabelle unter Tab 3: letzte Einträge */
+async function refreshRecentEntries(){
+  try{
+    const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
+    const rows=(data.rows||[]).map(r=>({...r,amount:num(r.amount)}))
+      .sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).slice(0,50);
+    const tb=$('recentEntries'); tb.innerHTML='';
+    rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${new Date(r.ts).toLocaleDateString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${num(r.amount).toFixed(2)}</td>`;
+      tb.appendChild(tr);
+    });
   }catch(e){showErr(String(e.message||e));}
 }
 
@@ -379,7 +409,7 @@ async function refreshMetaTables(){
       await refreshMetaTables(); await loadEntryMeta();
     };
     $('addFine').onclick=async()=>{
-      const name=$('fineName').value.trim(); const amount=Number($('fineAmount').value);
+      const name=$('fineName').value.trim(); const amount=num($('fineAmount').value);
       if(!name||!Number.isFinite(amount)){alert('Vergehen & Betrag?');return;}
       await apiAdmin('upsert_fine',{name,amount}); $('fineName').value=''; $('fineAmount').value='';
       await refreshMetaTables(); await loadEntryMeta();
@@ -402,7 +432,7 @@ function drawFinesTable(list){
   const tb=$('finesTable'); tb.innerHTML='';
   list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${f.name}</td><td>${(Number(f.amount)||0).toFixed(2)}</td><td><button class="btn danger" data-del="${f.name}">Löschen</button></td>`;
+    tr.innerHTML=`<td>${f.name}</td><td>${num(f.amount).toFixed(2)}</td><td><button class="btn danger" data-del="${f.name}">Löschen</button></td>`;
     tr.querySelector('[data-del]').onclick=async()=>{
       if(!confirm('Strafe löschen: '+f.name+'?')) return;
       await apiAdmin('delete_fine',{name:f.name}); await refreshMetaTables(); await loadEntryMeta();

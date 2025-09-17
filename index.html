@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="de">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Penalty Track</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -12,8 +12,7 @@
 body{margin:0;background:
   radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
   radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),
-  var(--bg);
-  color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  var(--bg);color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
   display:flex;flex-direction:column}
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);
@@ -35,10 +34,12 @@ footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid
 .tabs .t{padding:10px 12px;border-radius:12px;background:#0b1220;color:#cbd5e1;border:1px solid var(--border);cursor:pointer}
 .tabs .t.active{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220;border:0}
 .hidden{display:none !important} .kpi{font-size:32px;font-weight:900}
-.split{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:900px){.split{grid-template-columns:1fr}}
+.split{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1200px){.split{grid-template-columns:1fr 1fr}}
+@media(max-width:900px){.split{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left} th{color:#cbd5e1;font-weight:700}
 .cfg details>summary{cursor:pointer;color:var(--muted)} .cfg-panel{margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
-.adminOnly{/* WICHTIG: NICHT verstecken – Sichtbarkeit steuert .hidden */}
+.adminOnly{/* NICHT verstecken – .hidden steuert Sichtbarkeit */}
 #errbar{position:fixed;right:12px;top:12px;background:#991b1b;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;z-index:9999;max-width:70vw}
 </style>
 </head>
@@ -95,6 +96,15 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <div class="split">
       <div class="card"><h3>Pott (Summe €)</h3><div id="pott" class="kpi">0,00 €</div><p id="countSum" class="muted">– Einträge</p></div>
       <div class="card"><h3>Top 3 Spieler (Summe €)</h3><ol id="top3" style="margin:0;padding-left:22px"></ol></div>
+      <div class="card">
+        <h3>Top 3 (gefiltert nach Strafe)</h3>
+        <div class="row" style="align-items:flex-end">
+          <label style="min-width:240px">Strafe wählen
+            <select id="filterFineTop" class="input"></select>
+          </label>
+        </div>
+        <ol id="top3Fine" style="margin:10px 0 0 22px;"></ol>
+      </div>
     </div>
     <div class="card" style="margin-top:12px"><h3>Akkumulierte Strafen über Zeit</h3><canvas id="chart" height="110"></canvas></div>
   </section>
@@ -116,14 +126,14 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <div class="row">
       <label style="min-width:260px">Spieler (Mehrfachauswahl)<select id="entryPlayers" class="input" multiple size="8" style="height:220px"></select></label>
       <label style="min-width:260px">Strafe (aus Stammdaten)<select id="entryFine" class="input"></select></label>
-      <label style="min-width:220px">Zeitstempel<input id="entryTs" class="input" type="datetime-local"></label>
+      <label style="min-width:220px">Datum<input id="entryDate" class="input" type="date"></label>
     </div>
     <div class="row"><button id="saveEntry" class="btn primary">➕ Speichern</button><span id="msgEntry" class="muted"></span></div>
   </section>
 
   <!-- Tab 4 -->
   <section id="tab4" class="card hidden">
-    <div class="split">
+    <div class="split" style="grid-template-columns:1fr 1fr">
       <div class="card">
         <h3>Spielerliste</h3>
         <div class="row">
@@ -169,7 +179,6 @@ function updateRoleTag(){
   const role=localStorage.getItem(LS.role)||'–';
   $('roleTag').textContent='Rolle: '+role;
   const isAdmin=(role==='Admin');
-  // Admin-Elemente über .hidden steuern
   qsa('.adminOnly').forEach(el=>el.classList.toggle('hidden',!isAdmin));
 }
 function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKey').value=localStorage.getItem(LS.key)||''; $('adminKey').value=localStorage.getItem(LS.adm)||''; updateRoleTag(); }
@@ -218,39 +227,81 @@ function cfg(){
   if(!api||!key){showErr('Bitte API-URL & API-Key oben unter ⚙️ speichern.');throw new Error('Config fehlt');}
   return {api,key,adm};
 }
-async function apiGet(params){
-  const {api,key}=cfg(); const u=new URL(api); u.searchParams.set('apiKey',key);
-  if(params){Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));}
-  const r=await fetch(u.toString()); if(!r.ok) throw new Error('GET '+r.status); return r.json();
+async function apiGet(params={}){
+  try{
+    const {api,key}=cfg(); const u=new URL(api); u.searchParams.set('apiKey',key);
+    Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+    const r=await fetch(u.toString(),{cache:'no-store'});
+    if(!r.ok) throw new Error('GET '+r.status);
+    return r.json();
+  }catch(err){
+    showErr('Fetch fehlgeschlagen – prüfe ⚙️ API-URL/Keys & Deployment. Details: '+(err.message||err));
+    throw err;
+  }
 }
 async function apiPost(body){
-  const {api,key}=cfg(); const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
-  if(!r.ok) throw new Error('POST '+r.status); return r.json();
+  try{
+    const {api,key}=cfg();
+    const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
+    if(!r.ok) throw new Error('POST '+r.status);
+    return r.json();
+  }catch(err){
+    showErr('Fetch fehlgeschlagen – prüfe ⚙️ API-URL/Keys & Deployment. Details: '+(err.message||err));
+    throw err;
+  }
 }
 async function apiAdmin(action,body){
   const {api,key,adm}=cfg();
   const r=await fetch(api+'?action='+encodeURIComponent(action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,adminKey:adm,...body})});
-  if(!r.ok) throw new Error(action+' '+r.status); return r.json();
+  if(!r.ok) throw new Error(action+' '+r.status);
+  return r.json();
 }
 
 /* ===== Tab 1: Dashboard ===== */
+function computeTop3ByFine(rows,fineName){
+  const per={};
+  rows.filter(r=>(r.fine||'')===fineName).forEach(r=>{
+    const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0);
+  });
+  return Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
+}
 let lineChart=null;
 async function refreshDashboard(){
   try{
-    const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
+    const data=await apiGet({view:'all'});
+    if(!data.ok) throw new Error(data.error||'API');
     const rows=(data.rows||[]).map(r=>({...r,amount:Number(r.amount||0)}));
+    const fines=(data.fines||[]);
+
     $('countSum').textContent=rows.length+' Einträge';
     const total=rows.reduce((a,r)=>a+(Number(r.amount)||0),0); $('pott').textContent=euro(total);
 
     const per={}; rows.forEach(r=>{const k=r.name||''; per[k]=(per[k]||0)+(Number(r.amount)||0);});
     const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
-    const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=n+': '+amt.toFixed(2)+' €'; ol.appendChild(li);});
+    const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);});
 
     const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:Number(r.amount)||0})).sort((a,b)=>a.t-b.t);
     let s=0; const labels=[],vals=[]; pts.forEach(p=>{s+=p.v;labels.push(p.t.toLocaleDateString());vals.push(s);});
     const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
     lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
-  }catch(e){showErr(String(e.message||e));}
+
+    // Top3 nach Strafe
+    const sel=$('filterFineTop');
+    if (sel && !sel.dataset.filled) {
+      sel.innerHTML='';
+      fines.forEach(f=>{ const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; sel.appendChild(o); });
+      sel.dataset.filled='1';
+      sel.onchange=()=>updateTop3Fine(rows, sel.value);
+    }
+    if (sel && sel.value) updateTop3Fine(rows, sel.value);
+
+  }catch(e){ showErr(String(e.message||e)); }
+}
+function updateTop3Fine(rows,fineName){
+  const list=$('top3Fine'); if(!list) return; list.innerHTML='';
+  const top=computeTop3ByFine(rows,fineName);
+  if(top.length===0){ const li=document.createElement('li'); li.textContent='Keine Einträge'; list.appendChild(li); return; }
+  top.forEach(([n,amt])=>{ const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; list.appendChild(li); });
 }
 
 /* ===== Tab 2: Detail ===== */
@@ -268,7 +319,7 @@ function fillDetail(rows,name){
   const body=$('detailBody'); body.innerHTML=''; let sum=0;
   rows.filter(r=>(r.name||'')===name).sort((a,b)=>String(b.ts).localeCompare(String(a.ts))).forEach(r=>{
     sum+=Number(r.amount)||0; const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${new Date(r.ts).toLocaleString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
+    tr.innerHTML=`<td>${new Date(r.ts).toLocaleDateString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${(Number(r.amount)||0).toFixed(2)}</td>`;
     body.appendChild(tr);
   });
   $('detailSum').textContent=euro(sum);
@@ -280,19 +331,28 @@ async function loadEntryMeta(){
   try{
     const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
     const players=meta.players||[], fines=meta.fines||[];
+
     const selP=$('entryPlayers'); selP.innerHTML='';
     players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o);});
+
     const selF=$('entryFine'); selF.innerHTML='';
     fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${(Number(f.amount)||0).toFixed(2)} €)`; o.dataset.amount=Number(f.amount)||0; selF.appendChild(o);});
+
+    // Datum default = heute
+    const d=new Date(); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0');
+    $('entryDate').value=`${yyyy}-${mm}-${dd}`;
 
     $('saveEntry').onclick=async()=>{
       try{
         const names=[...selP.selectedOptions].map(o=>o.value);
         const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; const amount=opt?Number(opt.dataset.amount||0):0;
-        const ts=$('entryTs').value?new Date($('entryTs').value).toISOString():new Date().toISOString();
+        const dateStr=$('entryDate').value;
+        if(!dateStr){alert('Bitte Datum wählen');return;}
+        const ts=new Date(dateStr+'T00:00:00').toISOString();
         if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
         for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
         $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>{$('msgEntry').textContent='';},1200);
+        await refreshDashboard(); await refreshDetail();
       }catch(err){showErr(String(err.message||err));}
     };
   }catch(e){showErr(String(e.message||e));}
@@ -306,12 +366,14 @@ async function refreshMetaTables(){
     drawPlayersTable(meta.players||[]); drawFinesTable(meta.fines||[]);
     $('addPlayer').onclick=async()=>{
       const name=$('playerName').value.trim(); if(!name){alert('Name?');return;}
-      await apiAdmin('upsert_player',{name}); $('playerName').value=''; await refreshMetaTables(); await loadEntryMeta();
+      await apiAdmin('upsert_player',{name}); $('playerName').value='';
+      await refreshMetaTables(); await loadEntryMeta();
     };
     $('addFine').onclick=async()=>{
       const name=$('fineName').value.trim(); const amount=Number($('fineAmount').value);
       if(!name||!Number.isFinite(amount)){alert('Vergehen & Betrag?');return;}
-      await apiAdmin('upsert_fine',{name,amount}); $('fineName').value=''; $('fineAmount').value=''; await refreshMetaTables(); await loadEntryMeta();
+      await apiAdmin('upsert_fine',{name,amount}); $('fineName').value=''; $('fineAmount').value='';
+      await refreshMetaTables(); await loadEntryMeta();
     };
   }catch(e){showErr(String(e.message||e));}
 }

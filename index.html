@@ -64,7 +64,11 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
         <label>API URL (Apps Script /exec)<input id="apiUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"></label>
         <label>API Key (alle)<input id="apiKey" class="input" placeholder="API Key"></label>
         <label>Admin Key (nur Admin)<input id="adminKey" class="input" placeholder="Admin Key"></label>
-        <div class="row"><button id="saveCfg" class="btn primary">Speichern</button><button id="clearCfg" class="btn secondary">Zurücksetzen</button><span id="cfgMsg" class="muted"></span></div>
+        <div class="row">
+          <button id="saveCfg" class="btn primary">Speichern</button>
+          <button id="clearCfg" class="btn secondary">Zurücksetzen</button>
+          <span id="cfgMsg" class="muted"></span>
+        </div>
       </div>
     </details>
   </div>
@@ -205,7 +209,13 @@ function updateRoleTag(){
   qsa('.adminOnly').forEach(el=>el.classList.toggle('hidden',!isAdmin));
 }
 function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKey').value=localStorage.getItem(LS.key)||''; $('adminKey').value=localStorage.getItem(LS.adm)||''; updateRoleTag(); }
-function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm',$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200); }
+function saveCfg(){
+  localStorage.setItem(LS.api, $('apiUrl').value.trim());
+  localStorage.setItem(LS.key, $('apiKey').value.trim());
+  localStorage.setItem(LS.adm, $('adminKey').value.trim()); /* ← FIX */
+  $('cfgMsg').textContent='Gespeichert';
+  setTimeout(()=>{$('cfgMsg').textContent='';},1200);
+}
 function clearCfg(){ localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm); updateRoleTag(); }
 
 /* ===== DOM Ready ===== */
@@ -220,10 +230,9 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();
   };
 
-  // Datum: Picker sichtbar öffnen (Button + Fallback)
+  // Datum: Picker sichtbar öffnen (Button + Fallback) & Standardwert heute
   const date=$('entryDate'), btn=$('btnPickDate');
   if(date){
-    // Default = heute
     const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
     date.value=`${yyyy}-${mm}-${dd}`;
     const openPicker=()=>{ if(typeof date.showPicker==='function'){ date.showPicker(); } else { date.focus(); date.click(); } };

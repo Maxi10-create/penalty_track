@@ -8,15 +8,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{--bg:#0b1220;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#60a5fa;--accent2:#22d3ee;--border:#1f2937}
-*{box-sizing:border-box} html,body{height:100%}
-body{margin:0;background:
-  radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
-  radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),
-  var(--bg);color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);
-  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
+*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:
+radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
+radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),var(--bg);
+color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
 .brand{display:flex;align-items:center;gap:12px}
 .brand img{height:42px;width:auto;border-radius:6px;background:#fff;padding:2px}
 .brand h1{margin:0;font-size:clamp(20px,3vw,28px)}
@@ -61,9 +57,9 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <details>
       <summary>⚙️ Konfiguration</summary>
       <div class="cfg-panel card">
-        <label>API URL (Apps Script /exec)<input id="apiUrl" class="input" placeholder="https://script.google.com/macros/s/.../exec"></label>
-        <label>API Key (alle)<input id="apiKey" class="input" placeholder="API Key"></label>
-        <label>Admin Key (nur Admin)<input id="adminKey" class="input" placeholder="Admin Key"></label>
+        <label>API URL (Apps Script /exec)<input id="apiUrl" class="input"></label>
+        <label>API Key (alle)<input id="apiKey" class="input"></label>
+        <label>Admin Key (nur Admin)<input id="adminKey" class="input"></label>
         <div class="row">
           <button id="saveCfg" class="btn primary">Speichern</button>
           <button id="clearCfg" class="btn secondary">Zurücksetzen</button>
@@ -79,11 +75,11 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
   <!-- Start -->
   <section id="screenRole" class="card">
     <h2>Willkommen 👋</h2>
-    <p class="muted">Wähle deinen Zugang. (Einmalig oben die Konfiguration setzen.)</p>
+    <p class="muted">Wähle deinen Zugang. (Die Konfiguration ist fest hinterlegt.)</p>
     <div class="row">
       <div class="card" style="flex:1">
         <h3>👤 Spieler</h3>
-        <p class="muted">Eintragen & ansehen. Hinweis: Spieler-Passwort 2024 (nur Info, kein Feld)</p>
+        <p class="muted">Eintragen & ansehen. Hinweis: Spieler-Passwort 2024 (nur Info)</p>
         <button id="btnPlayer" class="btn primary">Als Spieler starten</button>
       </div>
       <div class="card" style="flex:1">
@@ -198,6 +194,17 @@ const qsa=(s,el=document)=>Array.from(el.querySelectorAll(s));
 const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const num=v=>{if(v==null) return 0; const s=String(v).replace(/\./g,'.').replace(',','.'); const x=parseFloat(s); return Number.isFinite(x)?x:0}
 
+/* ===== Variante A: feste Defaults (öffentlich!) =====
+   !!! Trage hier deine /exec-URL ein !!!
+*/
+const DEFAULTS = {
+  API: 'https://script.google.com/macros/s/AKfycbwuK_OfA5oKJUdypJ0ZhdrabDsxcx4kIHXe0NVzp2gtgajX-RRy958UORCITdaVSzYlvw/exec',  // z.B. https://script.google.com/macros/s/AKfy.../exec
+  KEY: '2f1e7b4a9c6d48f8a0d1f3c27e6a9b52',
+  ADM: '9e3c0a7f2d584c86b1a44e2f7d9b6f01'
+};
+/* Konfiguration sperren (Inputs disabled) */
+const LOCK_CONFIG = true;
+
 /* ===== Config & Role ===== */
 const LS={api:'pt_api',key:'pt_key',adm:'pt_adm',role:'pt_role'};
 const ADMIN_PWD='admin2024';
@@ -208,20 +215,35 @@ function updateRoleTag(){
   const isAdmin=(role==='Admin');
   qsa('.adminOnly').forEach(el=>el.classList.toggle('hidden',!isAdmin));
 }
-function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKey').value=localStorage.getItem(LS.key)||''; $('adminKey').value=localStorage.getItem(LS.adm)||''; updateRoleTag(); }
-function saveCfg(){
-  localStorage.setItem(LS.api, $('apiUrl').value.trim());
-  localStorage.setItem(LS.key, $('apiKey').value.trim());
-  localStorage.setItem(LS.adm, $('adminKey').value.trim()); /* ← FIX */
-  $('cfgMsg').textContent='Gespeichert';
-  setTimeout(()=>{$('cfgMsg').textContent='';},1200);
+function loadCfg(){
+  const api = localStorage.getItem(LS.api) || DEFAULTS.API;
+  const key = localStorage.getItem(LS.key) || DEFAULTS.KEY;
+  const adm = localStorage.getItem(LS.adm) || DEFAULTS.ADM;
+  $('apiUrl').value=api; $('apiKey').value=key; $('adminKey').value=adm;
+  updateRoleTag();
+  if(LOCK_CONFIG){
+    document.querySelector('.cfg details').open=false;
+    qsa('.cfg input, .cfg button').forEach(el=>el.disabled=true);
+  }
 }
-function clearCfg(){ localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm); updateRoleTag(); }
+function saveCfg(){
+  if(LOCK_CONFIG) return;
+  localStorage.setItem(LS.api,$('apiUrl').value.trim());
+  localStorage.setItem(LS.key,$('apiKey').value.trim());
+  localStorage.setItem(LS.adm,$('adminKey').value.trim());
+  $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200);
+}
+function clearCfg(){
+  if(LOCK_CONFIG) return;
+  localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm);
+  $('apiUrl').value=DEFAULTS.API; $('apiKey').value=DEFAULTS.KEY; $('adminKey').value=DEFAULTS.ADM;
+  updateRoleTag();
+}
 
 /* ===== DOM Ready ===== */
 document.addEventListener('DOMContentLoaded',()=>{
   $('saveCfg').onclick=saveCfg;
-  $('clearCfg').onclick=()=>{clearCfg();$('apiUrl').value='';$('apiKey').value='';$('adminKey').value='';};
+  $('clearCfg').onclick=clearCfg;
 
   $('btnPlayer').onclick=()=>{localStorage.setItem(LS.role,'Spieler');updateRoleTag();showApp();};
   $('btnAdmin').onclick=()=>{
@@ -230,7 +252,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();
   };
 
-  // Datum: Picker sichtbar öffnen (Button + Fallback) & Standardwert heute
+  // Datum-Picker (Standard: heute)
   const date=$('entryDate'), btn=$('btnPickDate');
   if(date){
     const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
@@ -264,10 +286,10 @@ function switchTab(id){
 
 /* ===== API (Apps Script) ===== */
 function cfg(){
-  const api=(localStorage.getItem(LS.api)||'').trim();
-  const key=(localStorage.getItem(LS.key)||'').trim();
-  const adm=(localStorage.getItem(LS.adm)||'').trim();
-  if(!api||!key){showErr('Bitte API-URL & API-Key oben unter ⚙️ speichern.');throw new Error('Config fehlt');}
+  const api=(localStorage.getItem(LS.api)||DEFAULTS.API).trim();
+  const key=(localStorage.getItem(LS.key)||DEFAULTS.KEY).trim();
+  const adm=(localStorage.getItem(LS.adm)||DEFAULTS.ADM).trim();
+  if(!api||!key){showErr('API-URL/Key fehlen.');throw new Error('Config fehlt');}
   return {api,key,adm};
 }
 async function apiGet(params={}){
@@ -277,12 +299,8 @@ async function apiGet(params={}){
     const r=await fetch(u.toString(),{cache:'no-store'});
     if(!r.ok) throw new Error('GET '+r.status);
     return r.json();
-  }catch(err){
-    showErr('Fetch fehlgeschlagen – prüfe ⚙️ API-URL/Keys & Deployment. Details: '+(err.message||err));
-    throw err;
-  }
+  }catch(err){showErr('Fetch fehlgeschlagen: '+(err.message||err));throw err;}
 }
-/* CORS-freundlich: text/plain */
 async function apiPost(body){
   const {api,key}=cfg();
   const r=await fetch(api,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:key,...body})});
@@ -296,7 +314,7 @@ async function apiAdmin(action,body){
   return r.json();
 }
 
-/* ===== Tab 1: Dashboard ===== */
+/* ===== Tab 1: Dashboard (X-Achse: täglich fortlaufend) ===== */
 function computeTop3ByFine(rows,fineName){
   const per={};
   rows.filter(r=>(r.fine||'')===fineName).forEach(r=>{
@@ -304,6 +322,8 @@ function computeTop3ByFine(rows,fineName){
   });
   return Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
 }
+function ymd(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`;}
+
 let lineChart=null;
 async function refreshDashboard(){
   try{
@@ -319,10 +339,35 @@ async function refreshDashboard(){
     const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
     const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);});
 
-    const pts=rows.map(r=>({t:new Date(r.ts||Date.now()),v:num(r.amount)})).sort((a,b)=>a.t-b.t);
-    let s=0; const labels=[],vals=[]; pts.forEach(p=>{s+=p.v;labels.push(p.t.toLocaleDateString());vals.push(s);});
-    const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
-    lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
+    // --- Tägliche Achse aufspannen ---
+    if(rows.length){
+      const tsList=rows.map(r=>new Date(r.ts||Date.now()));
+      tsList.sort((a,b)=>a-b);
+      const start=new Date(ymd(tsList[0])+'T00:00:00');
+      const end  =new Date(ymd(tsList[tsList.length-1])+'T00:00:00');
+
+      // Summe je Tag
+      const perDay=new Map();
+      rows.forEach(r=>{
+        const d=new Date(r.ts||Date.now());
+        const k=ymd(d);
+        perDay.set(k,(perDay.get(k)||0)+num(r.amount));
+      });
+
+      // Lücken füllen, kumulieren
+      const labels=[], vals=[]; let run=0;
+      for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+        const key=ymd(d); run += (perDay.get(key)||0);
+        labels.push(d.toLocaleDateString('de-DE')); vals.push(run);
+      }
+
+      const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
+      lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€) – täglich',data:vals,tension:.25}]},
+        options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+    }else{
+      const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
+      lineChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Akkumuliert (€) – täglich',data:[]}]},options:{responsive:true}});
+    }
 
     const sel=$('filterFineTop');
     if (sel && !sel.dataset.filled) {

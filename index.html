@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Penalty Track</title>
+<title>Penalty Tracking – ASV Natz</title>
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -17,7 +17,9 @@ body{margin:0;background:
 header{display:flex;align-items:center;justify-content:space-between;gap:12px;
   padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);
   background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
-h1{margin:0;font-size:clamp(20px,3vw,28px)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{height:42px;width:auto;border-radius:6px;background:#fff;padding:2px}
+.brand h1{margin:0;font-size:clamp(20px,3vw,28px)}
 .badge{font-weight:800;padding:4px 8px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent2));color:#0b1220}
 main{padding:18px clamp(12px,3vw,28px);flex:1}
 footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid var(--border)}
@@ -28,6 +30,7 @@ footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid
 .btn{padding:10px 14px;border:0;border-radius:12px;cursor:pointer;font-weight:700}
 .btn.primary{color:#0b1220;background:linear-gradient(90deg,var(--accent),var(--accent2))}
 .btn.secondary{background:#334155;color:#e5e7eb}
+.btn.icon{display:inline-flex;align-items:center;gap:8px}
 .btn.danger{background:linear-gradient(90deg,#fb7185,#f43f5e);color:#0b1220}
 .muted{color:var(--muted)} .roleTag{font-weight:800;color:var(--muted)}
 .tabs{display:flex;gap:8px;margin:10px 0}
@@ -40,13 +43,20 @@ footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid
 table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left} th{color:#cbd5e1;font-weight:700}
 .cfg details>summary{cursor:pointer;color:var(--muted)} .cfg-panel{margin-top:8px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 #errbar{position:fixed;right:12px;top:12px;background:#991b1b;color:#fff;padding:10px 12px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.3);display:none;z-index:9999;max-width:70vw}
+.date-wrap{display:flex;gap:8px;align-items:center;min-width:240px}
+.date-wrap .input{flex:1}
 </style>
 </head>
 <body>
 <div id="errbar"></div>
 
 <header>
-  <div style="display:flex;align-items:center;gap:10px"><span class="badge">Penalty</span><h1>Track</h1></div>
+  <div class="brand">
+    <!-- Logo-Datei neben index.html als "logo_asv_natz.png" ablegen -->
+    <img src="./logo_asv_natz.png" alt="ASV Natz Logo" id="brandLogo">
+    <span class="badge">Penalty</span>
+    <h1>Tracking – ASV Natz</h1>
+  </div>
   <div class="cfg">
     <details>
       <summary>⚙️ Konfiguration</summary>
@@ -125,11 +135,15 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <div class="row">
       <label style="min-width:260px">Spieler (Mehrfachauswahl)<select id="entryPlayers" class="input" multiple size="8" style="height:220px"></select></label>
       <label style="min-width:260px">Strafe (aus Stammdaten)<select id="entryFine" class="input"></select></label>
-      <label style="min-width:220px">Datum<input id="entryDate" class="input" type="date"></label>
+      <div class="date-wrap">
+        <label style="flex:1">Datum
+          <input id="entryDate" class="input" type="date">
+        </label>
+        <button id="btnPickDate" class="btn secondary icon" title="Kalender öffnen">📅 Kalender</button>
+      </div>
     </div>
     <div class="row"><button id="saveEntry" class="btn primary">➕ Speichern</button><span id="msgEntry" class="muted"></span></div>
 
-    <!-- Neue Tabelle: letzte Einträge -->
     <div class="card" style="margin-top:14px;overflow:auto">
       <h4>Letzte Einträge</h4>
       <table>
@@ -167,7 +181,7 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
   </section>
 </main>
 
-<footer><span class="muted">© Penalty Track • statische App • Google Sheets (Apps Script)</span></footer>
+<footer><span class="muted">© Penalty Tracking – ASV Natz • statische App • Google Sheets (Apps Script)</span></footer>
 
 <script>
 /* ===== Fehler-Banner ===== */
@@ -178,8 +192,7 @@ window.onerror=(m)=>{showErr(String(m));};
 const $=id=>document.getElementById(id);
 const qsa=(s,el=document)=>Array.from(el.querySelectorAll(s));
 const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
-// robuste Zahl-Parse (akzeptiert "5", "5.00", "5,00")
-const num=v=>{if(v==null) return 0; const s=String(v).replace(/\./g,'.').replace(',','.'); const x=parseFloat(s); return Number.isFinite(x)?x:0;}
+const num=v=>{if(v==null) return 0; const s=String(v).replace(/\./g,'.').replace(',','.'); const x=parseFloat(s); return Number.isFinite(x)?x:0}
 
 /* ===== Config & Role ===== */
 const LS={api:'pt_api',key:'pt_key',adm:'pt_adm',role:'pt_role'};
@@ -192,7 +205,7 @@ function updateRoleTag(){
   qsa('.adminOnly').forEach(el=>el.classList.toggle('hidden',!isAdmin));
 }
 function loadCfg(){ $('apiUrl').value=localStorage.getItem(LS.api)||''; $('apiKey').value=localStorage.getItem(LS.key)||''; $('adminKey').value=localStorage.getItem(LS.adm)||''; updateRoleTag(); }
-function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm,$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200); }
+function saveCfg(){ localStorage.setItem(LS.api,$('apiUrl').value.trim()); localStorage.setItem(LS.key,$('apiKey').value.trim()); localStorage.setItem(LS.adm',$('adminKey').value.trim()); $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200); }
 function clearCfg(){ localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm); updateRoleTag(); }
 
 /* ===== DOM Ready ===== */
@@ -206,6 +219,17 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(p!==ADMIN_PWD){$('loginMsg').textContent='Falsches Passwort';return;}
     $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();
   };
+
+  // Datum: Picker sichtbar öffnen (Button + Fallback)
+  const date=$('entryDate'), btn=$('btnPickDate');
+  if(date){
+    // Default = heute
+    const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
+    date.value=`${yyyy}-${mm}-${dd}`;
+    const openPicker=()=>{ if(typeof date.showPicker==='function'){ date.showPicker(); } else { date.focus(); date.click(); } };
+    date.addEventListener('focus', openPicker);
+    btn.addEventListener('click', openPicker);
+  }
 
   qsa('#tabs .t').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   loadCfg();
@@ -249,29 +273,16 @@ async function apiGet(params={}){
     throw err;
   }
 }
-/* CORS-FIX: text/plain senden, damit kein Preflight (OPTIONS) nötig ist */
+/* CORS-freundlich: text/plain */
 async function apiPost(body){
-  try{
-    const {api,key}=cfg();
-    const r=await fetch(api,{
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify({apiKey:key, ...body})
-    });
-    if(!r.ok) throw new Error('POST '+r.status);
-    return r.json();
-  }catch(err){
-    showErr('Fetch fehlgeschlagen – prüfe ⚙️ API-URL/Keys & Deployment. Details: '+(err.message||err));
-    throw err;
-  }
+  const {api,key}=cfg();
+  const r=await fetch(api,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:key,...body})});
+  if(!r.ok) throw new Error('POST '+r.status);
+  return r.json();
 }
 async function apiAdmin(action,body){
   const {api,key,adm}=cfg();
-  const r=await fetch(api+'?action='+encodeURIComponent(action),{
-    method:'POST',
-    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-    body: JSON.stringify({apiKey:key, adminKey:adm, ...body})
-  });
+  const r=await fetch(api+'?action='+encodeURIComponent(action),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:key,adminKey:adm,...body})});
   if(!r.ok) throw new Error(action+' '+r.status);
   return r.json();
 }
@@ -304,7 +315,6 @@ async function refreshDashboard(){
     const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
     lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€)',data:vals,tension:.3}]},options:{responsive:true}});
 
-    // Top3 nach Strafe
     const sel=$('filterFineTop');
     if (sel && !sel.dataset.filled) {
       sel.innerHTML='';
@@ -359,28 +369,24 @@ async function loadEntryMeta(){
 
     const selF=$('entryFine'); selF.innerHTML='';
     fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${num(f.amount).toFixed(2)} €)`; o.dataset.amount=num(f.amount); selF.appendChild(o);});
-
-    // Datum default = heute
-    const d=new Date(); const yyyy=d.getFullYear(); const mm=String(d.getMonth()+1).padStart(2,'0'); const dd=String(d.getDate()).padStart(2,'0');
-    $('entryDate').value=`${yyyy}-${mm}-${dd}`;
-
-    $('saveEntry').onclick=async()=>{
-      try{
-        const names=[...selP.selectedOptions].map(o=>o.value);
-        const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; 
-        // Betrag robust aus Map (falls dataset leer)
-        const amount=opt?num(opt.dataset.amount): (FINES_MAP.has(fine)?FINES_MAP.get(fine):0);
-        const dateStr=$('entryDate').value;
-        if(!dateStr){alert('Bitte Datum wählen');return;}
-        const ts=new Date(dateStr+'T00:00:00').toISOString();
-        if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
-        for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
-        $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>{$('msgEntry').textContent='';},1200);
-        await refreshDashboard(); await refreshDetail(); await refreshRecentEntries();
-      }catch(err){showErr(String(err.message||err));}
-    };
   }catch(e){showErr(String(e.message||e));}
 }
+
+$('saveEntry')?.addEventListener('click', async ()=>{
+  try{
+    const selP=$('entryPlayers'), selF=$('entryFine');
+    const names=[...selP.selectedOptions].map(o=>o.value);
+    const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; 
+    const amount=opt?num(opt.dataset.amount): (FINES_MAP.has(fine)?FINES_MAP.get(fine):0);
+    const dateStr=$('entryDate').value;
+    if(!dateStr){alert('Bitte Datum wählen');return;}
+    const ts=new Date(dateStr+'T00:00:00').toISOString();
+    if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
+    for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
+    $('msgEntry').textContent='Gespeichert ✔'; setTimeout(()=>{$('msgEntry').textContent='';},1200);
+    await refreshDashboard(); await refreshDetail(); await refreshRecentEntries();
+  }catch(err){showErr(String(err.message||err));}
+});
 
 /* Tabelle unter Tab 3: letzte Einträge */
 async function refreshRecentEntries(){

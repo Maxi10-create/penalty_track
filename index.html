@@ -8,11 +8,15 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root{--bg:#0b1220;--card:#111827;--muted:#94a3b8;--text:#e5e7eb;--accent:#60a5fa;--accent2:#22d3ee;--border:#1f2937}
-*{box-sizing:border-box} html,body{height:100%} body{margin:0;background:
-radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
-radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),var(--bg);
-color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;background:
+  radial-gradient(1200px 600px at 20% -10%,#0f172a 10%,transparent 60%),
+  radial-gradient(900px 500px at 120% 20%,#111827 10%,transparent 70%),
+  var(--bg);color:var(--text);font:500 16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px clamp(12px,3vw,28px);border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));position:sticky;top:0;z-index:10}
 .brand{display:flex;align-items:center;gap:12px}
 .brand img{height:42px;width:auto;border-radius:6px;background:#fff;padding:2px}
 .brand h1{margin:0;font-size:clamp(20px,3vw,28px)}
@@ -28,6 +32,7 @@ footer{padding:18px clamp(12px,3vw,28px);color:var(--muted);border-top:1px solid
 .btn.secondary{background:#334155;color:#e5e7eb}
 .btn.icon{display:inline-flex;align-items:center;gap:8px}
 .btn.danger{background:linear-gradient(90deg,#fb7185,#f43f5e);color:#0b1220}
+.btn.small{padding:6px 10px;font-size:13px;border-radius:10px}
 .muted{color:var(--muted)} .roleTag{font-weight:800;color:var(--muted)}
 .tabs{display:flex;gap:8px;margin:10px 0}
 .tabs .t{padding:10px 12px;border-radius:12px;background:#0b1220;color:#cbd5e1;border:1px solid var(--border);cursor:pointer}
@@ -48,7 +53,6 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
 
 <header>
   <div class="brand">
-    <!-- Logo-Datei neben index.html als "logo_asv_natz.png" ablegen -->
     <img src="./logo_asv_natz.png" alt="ASV Natz Logo" id="brandLogo">
     <span class="badge">Penalty</span>
     <h1>Tracking – ASV Natz</h1>
@@ -72,19 +76,17 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
 </header>
 
 <main>
-  <!-- Start -->
   <section id="screenRole" class="card">
     <h2>Willkommen 👋</h2>
-    <p class="muted">Wähle deinen Zugang.</p>
+    <p class="muted">Die Konfiguration ist fest hinterlegt. Wähle deinen Zugang.</p>
     <div class="row">
       <div class="card" style="flex:1">
         <h3>👤 Spieler</h3>
-        <p class="muted">.</p>
+        <p class="muted">Hinweis: Spieler-Passwort 2024 (nur Info)</p>
         <button id="btnPlayer" class="btn primary">Als Spieler starten</button>
       </div>
       <div class="card" style="flex:1">
         <h3>🛡️ Admin</h3>
-        <p class="muted">.</p>
         <input id="adminPwd" class="input" type="password" placeholder="Admin-Passwort eingeben">
         <button id="btnAdmin" class="btn secondary">Als Admin anmelden</button>
         <span id="loginMsg" class="muted"></span>
@@ -92,7 +94,6 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     </div>
   </section>
 
-  <!-- Tabs -->
   <nav id="tabs" class="tabs hidden">
     <button class="t active" data-tab="tab1">1) Dashboard</button>
     <button class="t" data-tab="tab2">2) Strafen (Spieler)</button>
@@ -100,25 +101,21 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     <button class="t adminOnly" data-tab="tab4">4) Stammdaten</button>
   </nav>
 
-  <!-- Tab 1 -->
   <section id="tab1" class="card hidden">
     <div class="split">
       <div class="card"><h3>Pott (Summe €)</h3><div id="pott" class="kpi">0,00 €</div><p id="countSum" class="muted">– Einträge</p></div>
       <div class="card"><h3>Top 3 Spieler (Summe €)</h3><ol id="top3" style="margin:0;padding-left:22px"></ol></div>
       <div class="card">
         <h3>Top 3 (gefiltert nach Strafe)</h3>
-        <div class="row" style="align-items:flex-end">
-          <label style="min-width:240px">Strafe wählen
-            <select id="filterFineTop" class="input"></select>
-          </label>
-        </div>
+        <label style="min-width:240px">Strafe wählen
+          <select id="filterFineTop" class="input"></select>
+        </label>
         <ol id="top3Fine" style="margin:10px 0 0 22px;"></ol>
       </div>
     </div>
     <div class="card" style="margin-top:12px"><h3>Akkumulierte Strafen über Zeit</h3><canvas id="chart" height="110"></canvas></div>
   </section>
 
-  <!-- Tab 2 -->
   <section id="tab2" class="card hidden">
     <div class="row" style="align-items:flex-end">
       <label style="min-width:240px">Spieler wählen<select id="filterPlayer" class="input"></select></label>
@@ -129,7 +126,6 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     </div>
   </section>
 
-  <!-- Tab 3 -->
   <section id="tab3" class="card hidden">
     <h3>Strafenerfassung (Admin)</h3>
     <div class="row">
@@ -153,7 +149,6 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
     </div>
   </section>
 
-  <!-- Tab 4 -->
   <section id="tab4" class="card hidden">
     <div class="split" style="grid-template-columns:1fr 1fr">
       <div class="card">
@@ -184,28 +179,26 @@ table{width:100%;border-collapse:collapse} th,td{padding:10px;border-bottom:1px 
 <footer><span class="muted">© Penalty Tracking – ASV Natz • statische App • Google Sheets (Apps Script)</span></footer>
 
 <script>
-/* ===== Fehler-Banner ===== */
+/* === Fehler-Banner === */
 function showErr(msg){const b=document.getElementById('errbar');b.textContent=msg;b.style.display='block';console.error('[PenaltyTrack]',msg);}
 window.onerror=(m)=>{showErr(String(m));};
 
-/* ===== Utilities ===== */
+/* === Utils === */
 const $=id=>document.getElementById(id);
 const qsa=(s,el=document)=>Array.from(el.querySelectorAll(s));
 const euro=n=>(Number(n)||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
 const num=v=>{if(v==null) return 0; const s=String(v).replace(/\./g,'.').replace(',','.'); const x=parseFloat(s); return Number.isFinite(x)?x:0}
+function ymd(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`;}
 
-/* ===== Variante A: feste Defaults (öffentlich!) =====
-   !!! Trage hier deine /exec-URL ein !!!
-*/
+/* === Variante A: feste Defaults (öffentlich sichtbar!) === */
 const DEFAULTS = {
-  API: 'https://script.google.com/macros/s/AKfycbwuK_OfA5oKJUdypJ0ZhdrabDsxcx4kIHXe0NVzp2gtgajX-RRy958UORCITdaVSzYlvw/exec',  // z.B. https://script.google.com/macros/s/AKfy.../exec
+  API: 'https://script.google.com/macros/s/AKfycbwuK_OfA5oKJUdypJ0ZhdrabDsxcx4kIHXe0NVzp2gtgajX-RRy958UORCITdaVSzYlvw/exec',    // <- hier /exec URL eintragen
   KEY: '2f1e7b4a9c6d48f8a0d1f3c27e6a9b52',
   ADM: '9e3c0a7f2d584c86b1a44e2f7d9b6f01'
 };
-/* Konfiguration sperren (Inputs disabled) */
 const LOCK_CONFIG = true;
 
-/* ===== Config & Role ===== */
+/* === Config & Role === */
 const LS={api:'pt_api',key:'pt_key',adm:'pt_adm',role:'pt_role'};
 const ADMIN_PWD='admin2024';
 
@@ -226,52 +219,27 @@ function loadCfg(){
     qsa('.cfg input, .cfg button').forEach(el=>el.disabled=true);
   }
 }
-function saveCfg(){
-  if(LOCK_CONFIG) return;
-  localStorage.setItem(LS.api,$('apiUrl').value.trim());
-  localStorage.setItem(LS.key,$('apiKey').value.trim());
-  localStorage.setItem(LS.adm,$('adminKey').value.trim());
-  $('cfgMsg').textContent='Gespeichert'; setTimeout(()=>{$('cfgMsg').textContent='';},1200);
-}
-function clearCfg(){
-  if(LOCK_CONFIG) return;
-  localStorage.removeItem(LS.api); localStorage.removeItem(LS.key); localStorage.removeItem(LS.adm);
-  $('apiUrl').value=DEFAULTS.API; $('apiKey').value=DEFAULTS.KEY; $('adminKey').value=DEFAULTS.ADM;
-  updateRoleTag();
-}
+function saveCfg(){ if(LOCK_CONFIG) return; }
+function clearCfg(){ if(LOCK_CONFIG) return; }
 
-/* ===== DOM Ready ===== */
 document.addEventListener('DOMContentLoaded',()=>{
-  $('saveCfg').onclick=saveCfg;
-  $('clearCfg').onclick=clearCfg;
-
   $('btnPlayer').onclick=()=>{localStorage.setItem(LS.role,'Spieler');updateRoleTag();showApp();};
-  $('btnAdmin').onclick=()=>{
-    const p=$('adminPwd').value.trim();
-    if(p!==ADMIN_PWD){$('loginMsg').textContent='Falsches Passwort';return;}
-    $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();
-  };
+  $('btnAdmin').onclick=()=>{const p=$('adminPwd').value.trim(); if(p!==ADMIN_PWD){$('loginMsg').textContent='Falsches Passwort';return;} $('loginMsg').textContent='';localStorage.setItem(LS.role,'Admin');updateRoleTag();showApp();};
 
-  // Datum-Picker (Standard: heute)
   const date=$('entryDate'), btn=$('btnPickDate');
   if(date){
     const d=new Date(), yyyy=d.getFullYear(), mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
     date.value=`${yyyy}-${mm}-${dd}`;
     const openPicker=()=>{ if(typeof date.showPicker==='function'){ date.showPicker(); } else { date.focus(); date.click(); } };
-    date.addEventListener('focus', openPicker);
-    btn.addEventListener('click', openPicker);
+    date.addEventListener('focus', openPicker); btn.addEventListener('click', openPicker);
   }
 
   qsa('#tabs .t').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
   loadCfg();
 });
 
-/* ===== UI Switcher ===== */
-function showApp(){
-  $('screenRole').classList.add('hidden');
-  $('tabs').classList.remove('hidden');
-  switchTab('tab1');
-}
+/* === UI === */
+function showApp(){ $('screenRole').classList.add('hidden'); $('tabs').classList.remove('hidden'); switchTab('tab1'); }
 function switchTab(id){
   qsa('main section').forEach(s=>s.classList.add('hidden'));
   $('tabs').classList.remove('hidden');
@@ -284,7 +252,7 @@ function switchTab(id){
   if(id==='tab4') refreshMetaTables();
 }
 
-/* ===== API (Apps Script) ===== */
+/* === API === */
 function cfg(){
   const api=(localStorage.getItem(LS.api)||DEFAULTS.API).trim();
   const key=(localStorage.getItem(LS.key)||DEFAULTS.KEY).trim();
@@ -314,16 +282,11 @@ async function apiAdmin(action,body){
   return r.json();
 }
 
-/* ===== Tab 1: Dashboard (X-Achse: täglich fortlaufend) ===== */
+/* === Tab 1: Dashboard mit täglicher X-Achse === */
 function computeTop3ByFine(rows,fineName){
-  const per={};
-  rows.filter(r=>(r.fine||'')===fineName).forEach(r=>{
-    const k=r.name||''; per[k]=(per[k]||0)+num(r.amount);
-  });
+  const per={}; rows.filter(r=>(r.fine||'')===fineName).forEach(r=>{ const k=r.name||''; per[k]=(per[k]||0)+num(r.amount); });
   return Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
 }
-function ymd(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),da=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${da}`;}
-
 let lineChart=null;
 async function refreshDashboard(){
   try{
@@ -339,33 +302,16 @@ async function refreshDashboard(){
     const top=Object.entries(per).sort((a,b)=>b[1]-a[1]).slice(0,3);
     const ol=$('top3'); ol.innerHTML=''; top.forEach(([n,amt])=>{const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; ol.appendChild(li);});
 
-    // --- Tägliche Achse aufspannen ---
+    // Tägliche Zeitskala, kumuliert
+    const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
     if(rows.length){
-      const tsList=rows.map(r=>new Date(r.ts||Date.now()));
-      tsList.sort((a,b)=>a-b);
-      const start=new Date(ymd(tsList[0])+'T00:00:00');
-      const end  =new Date(ymd(tsList[tsList.length-1])+'T00:00:00');
-
-      // Summe je Tag
-      const perDay=new Map();
-      rows.forEach(r=>{
-        const d=new Date(r.ts||Date.now());
-        const k=ymd(d);
-        perDay.set(k,(perDay.get(k)||0)+num(r.amount));
-      });
-
-      // Lücken füllen, kumulieren
-      const labels=[], vals=[]; let run=0;
-      for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
-        const key=ymd(d); run += (perDay.get(key)||0);
-        labels.push(d.toLocaleDateString('de-DE')); vals.push(run);
-      }
-
-      const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
-      lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€) – täglich',data:vals,tension:.25}]},
-        options:{responsive:true,scales:{y:{beginAtZero:true}}}});
+      const ts=rows.map(r=>new Date(r.ts||Date.now())).sort((a,b)=>a-b);
+      const start=new Date(ymd(ts[0])+'T00:00:00'); const end=new Date(ymd(ts[ts.length-1])+'T00:00:00');
+      const perDay=new Map(); rows.forEach(r=>{const k=ymd(new Date(r.ts)); perDay.set(k,(perDay.get(k)||0)+num(r.amount));});
+      const labels=[],vals=[]; let run=0;
+      for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){ const k=ymd(d); run+=(perDay.get(k)||0); labels.push(d.toLocaleDateString('de-DE')); vals.push(run); }
+      lineChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'Akkumuliert (€) – täglich',data:vals,tension:.25}]},options:{responsive:true,scales:{y:{beginAtZero:true}}}});
     }else{
-      const ctx=$('chart').getContext('2d'); if(lineChart) lineChart.destroy();
       lineChart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Akkumuliert (€) – täglich',data:[]}]},options:{responsive:true}});
     }
 
@@ -381,13 +327,13 @@ async function refreshDashboard(){
   }catch(e){ showErr(String(e.message||e)); }
 }
 function updateTop3Fine(rows,fineName){
-  const list=$('top3Fine'); if(!list) return; list.innerHTML='';
+  const list=$('top3Fine'); list.innerHTML='';
   const top=computeTop3ByFine(rows,fineName);
   if(top.length===0){ const li=document.createElement('li'); li.textContent='Keine Einträge'; list.appendChild(li); return; }
   top.forEach(([n,amt])=>{ const li=document.createElement('li'); li.textContent=`${n}: ${amt.toFixed(2)} €`; list.appendChild(li); });
 }
 
-/* ===== Tab 2: Detail ===== */
+/* === Tab 2: Detail === */
 async function refreshDetail(){
   try{
     const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
@@ -408,32 +354,25 @@ function fillDetail(rows,name){
   $('detailSum').textContent=euro(sum);
 }
 
-/* ===== Tab 3: Erfassung (Admin) ===== */
-let FINES_MAP = new Map();
+/* === Tab 3: Erfassung === */
+let FINES_MAP=new Map();
 async function loadEntryMeta(){
   if((localStorage.getItem(LS.role)||'')!=='Admin') return;
   try{
     const meta=await apiGet({view:'meta'}); if(!meta.ok) throw new Error(meta.error||'API');
     const players=meta.players||[], fines=meta.fines||[];
-
     FINES_MAP = new Map(fines.map(f=>[f.name, num(f.amount)]));
-
-    const selP=$('entryPlayers'); selP.innerHTML='';
-    players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o);});
-
-    const selF=$('entryFine'); selF.innerHTML='';
-    fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${num(f.amount).toFixed(2)} €)`; o.dataset.amount=num(f.amount); selF.appendChild(o);});
+    const selP=$('entryPlayers'); selP.innerHTML=''; players.forEach(p=>{const o=document.createElement('option'); o.value=p.name; o.textContent=p.name; selP.appendChild(o);});
+    const selF=$('entryFine'); selF.innerHTML=''; fines.forEach(f=>{const o=document.createElement('option'); o.value=f.name; o.textContent=`${f.name} (${num(f.amount).toFixed(2)} €)`; o.dataset.amount=num(f.amount); selF.appendChild(o);});
   }catch(e){showErr(String(e.message||e));}
 }
-
 $('saveEntry')?.addEventListener('click', async ()=>{
   try{
     const selP=$('entryPlayers'), selF=$('entryFine');
     const names=[...selP.selectedOptions].map(o=>o.value);
     const opt=selF.selectedOptions[0]; const fine=opt?opt.value:''; 
     const amount=opt?num(opt.dataset.amount): (FINES_MAP.has(fine)?FINES_MAP.get(fine):0);
-    const dateStr=$('entryDate').value;
-    if(!dateStr){alert('Bitte Datum wählen');return;}
+    const dateStr=$('entryDate').value; if(!dateStr){alert('Bitte Datum wählen');return;}
     const ts=new Date(dateStr+'T00:00:00').toISOString();
     if(!names.length||!fine){alert('Bitte Spieler & Strafe wählen');return;}
     for(const n of names){ await apiPost({name:n,fine,amount,ts}); }
@@ -442,7 +381,7 @@ $('saveEntry')?.addEventListener('click', async ()=>{
   }catch(err){showErr(String(err.message||err));}
 });
 
-/* Tabelle unter Tab 3: letzte Einträge */
+/* Letzte Einträge + Löschen */
 async function refreshRecentEntries(){
   try{
     const data=await apiGet({view:'all'}); if(!data.ok) throw new Error(data.error||'API');
@@ -451,13 +390,25 @@ async function refreshRecentEntries(){
     const tb=$('recentEntries'); tb.innerHTML='';
     rows.forEach(r=>{
       const tr=document.createElement('tr');
-      tr.innerHTML=`<td>${new Date(r.ts).toLocaleDateString()}</td><td>${r.name}</td><td>${r.fine||''}</td><td>${num(r.amount).toFixed(2)}</td>`;
+      const d=new Date(r.ts).toLocaleDateString('de-DE');
+      tr.innerHTML=`<td>${d}</td><td>${r.name||''}</td><td>${r.fine||''}</td>
+        <td style="white-space:nowrap">${num(r.amount).toFixed(2)}
+        ${(localStorage.getItem(LS.role)==='Admin' && r.id) ? `&nbsp;<button class="btn danger small del" data-id="${r.id}">Löschen</button>` : ''}</td>`;
       tb.appendChild(tr);
     });
   }catch(e){showErr(String(e.message||e));}
 }
+$('recentEntries').addEventListener('click', async (ev)=>{
+  const btn=ev.target.closest('button.del'); if(!btn) return;
+  const id=btn.dataset.id; if(!id) return;
+  if(!confirm('Diesen Eintrag wirklich löschen?')) return;
+  try{
+    await apiAdmin('delete_entry',{id});
+    await refreshDashboard(); await refreshDetail(); await refreshRecentEntries();
+  }catch(err){showErr('Löschen fehlgeschlagen: '+(err.message||err));}
+});
 
-/* ===== Tab 4: Stammdaten (Admin) ===== */
+/* === Tab 4: Stammdaten === */
 async function refreshMetaTables(){
   if((localStorage.getItem(LS.role)||'')!=='Admin') return;
   try{
@@ -480,8 +431,8 @@ function drawPlayersTable(list){
   const tb=$('playersTable'); tb.innerHTML='';
   list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(p=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${p.name}</td><td><button class="btn danger" data-del="${p.name}">Löschen</button></td>`;
-    tr.querySelector('[data-del]').onclick=async()=>{
+    tr.innerHTML=`<td>${p.name}</td><td><button class="btn danger small" data-del-player="${p.name}">Löschen</button></td>`;
+    tr.querySelector('[data-del-player]').onclick=async()=>{
       if(!confirm('Spieler löschen: '+p.name+'?')) return;
       await apiAdmin('delete_player',{name:p.name}); await refreshMetaTables(); await loadEntryMeta();
     };
@@ -492,8 +443,8 @@ function drawFinesTable(list){
   const tb=$('finesTable'); tb.innerHTML='';
   list.sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>{
     const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${f.name}</td><td>${num(f.amount).toFixed(2)}</td><td><button class="btn danger" data-del="${f.name}">Löschen</button></td>`;
-    tr.querySelector('[data-del]').onclick=async()=>{
+    tr.innerHTML=`<td>${f.name}</td><td>${num(f.amount).toFixed(2)}</td><td><button class="btn danger small" data-del-fine="${f.name}">Löschen</button></td>`;
+    tr.querySelector('[data-del-fine]').onclick=async()=>{
       if(!confirm('Strafe löschen: '+f.name+'?')) return;
       await apiAdmin('delete_fine',{name:f.name}); await refreshMetaTables(); await loadEntryMeta();
     };
@@ -501,7 +452,7 @@ function drawFinesTable(list){
   });
 }
 
-/* ===== Init ===== */
+/* === Init === */
 loadCfg();
 </script>
 </body>

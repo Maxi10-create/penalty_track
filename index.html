@@ -239,10 +239,15 @@ async function apiGet(params={}){
     throw err;
   }
 }
+/* CORS-FIX: text/plain senden, damit kein Preflight (OPTIONS) nötig ist */
 async function apiPost(body){
   try{
     const {api,key}=cfg();
-    const r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,...body})});
+    const r=await fetch(api,{
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({apiKey:key, ...body})
+    });
     if(!r.ok) throw new Error('POST '+r.status);
     return r.json();
   }catch(err){
@@ -252,7 +257,11 @@ async function apiPost(body){
 }
 async function apiAdmin(action,body){
   const {api,key,adm}=cfg();
-  const r=await fetch(api+'?action='+encodeURIComponent(action),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key,adminKey:adm,...body})});
+  const r=await fetch(api+'?action='+encodeURIComponent(action),{
+    method:'POST',
+    headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+    body: JSON.stringify({apiKey:key, adminKey:adm, ...body})
+  });
   if(!r.ok) throw new Error(action+' '+r.status);
   return r.json();
 }

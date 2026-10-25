@@ -203,7 +203,7 @@
   const empty = (t) => '<div class="empty">' + esc(t) + '</div>';
   const back = (label = 'Zurück') => '<button type="button" data-a="back">' + esc(label) + '</button>';
   function header() {
-    return '<header class="top"><img src="assets/logo-96.webp" width="44" height="44" alt="ASV Natz Logo">' +
+    return '<header class="top"><img src="assets/img/logo-96.webp" width="44" height="44" alt="ASV Natz Logo">' +
       '<div class="t"><span class="eyebrow">ASV Natz</span><span class="title">Strafenkasse</span></div>' +
       '<button type="button" class="chip" data-a="go" data-s="more">' + (isAdmin() ? 'Admin' : 'Spieler') + '</button></header>';
   }
@@ -351,7 +351,7 @@
   /* ===== Screens ===== */
   function viewLogin() {
     return '<div class="login">' +
-      '<div><img class="logo" src="assets/logo-192.png" width="96" height="96" alt="ASV Natz Logo"><h1 style="margin-top:16px">Strafenkasse</h1><p class="muted">ASV Natz</p></div>' +
+      '<div><img class="logo" src="assets/img/logo-192.png" width="96" height="96" alt="ASV Natz Logo"><h1 style="margin-top:16px">Strafenkasse</h1><p class="muted">ASV Natz</p></div>' +
       '<button type="button" class="btn primary" data-a="asPlayer">Als Spieler ansehen</button>' +
       '<div class="divider">oder</div>' + loginForm() + '</div>';
   }

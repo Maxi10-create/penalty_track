@@ -10,7 +10,8 @@ const SHEET_DATA = 'Daten';
 const SHEET_PLAY = 'Players';
 const SHEET_FINE = 'Fines';
 const DATA_COLS = ['id', 'name', 'fine', 'amount', 'ts', 'paid', 'paidAt'];
-const CACHE_KEY = 'pt_all_v2';
+const CODE_VERSION = 5; // bei jeder Änderung am Lesen erhöhen → alter Cache wird ignoriert
+const CACHE_KEY = 'pt_all_v' + CODE_VERSION;
 const CACHE_TTL = 600; // Sekunden; Schreibvorgänge leeren den Cache sofort
 
 function prop_(k) { return PropertiesService.getScriptProperties().getProperty(k) || ''; }

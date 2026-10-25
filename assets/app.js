@@ -7,6 +7,10 @@
   const API_KEY = '2f1e7b4a9c6d48f8a0d1f3c27e6a9b52';
   const LS = { cache: 'pt_cache_v2', role: 'pt_role', pwd: 'pt_admin' };
   const DAY = 864e5;
+  // Spielpausen ohne Strafen – werden in der Prognose herausgerechnet (Monat 0 = Januar)
+  const BREAKS = [
+    { label: 'Winterpause', from: new Date(2026, 11, 1).getTime(), to: new Date(2027, 0, 18, 23, 59).getTime() }
+  ];
 
   /* ===== Speicher ===== */
   const store = {
@@ -105,7 +109,8 @@
     try { return await fetch(url, { ...opt, signal: c.signal }); }
     finally { clearTimeout(timer); }
   }
-  const ERR = { unauthorized: 'API-Schlüssel ungültig', forbidden: 'Admin-Passwort ungültig', 'not found': 'Eintrag nicht gefunden', 'unknown action': 'Apps Script ist noch nicht aktualisiert' };
+  const OLD_SCRIPT = 'Apps Script läuft noch in der alten Version – bitte „Neue Version“ bereitstellen';
+  const ERR = { unauthorized: 'API-Schlüssel ungültig', forbidden: 'Admin-Passwort ungültig', 'not found': 'Eintrag nicht gefunden', 'unknown action': OLD_SCRIPT };
   const errText = (e) => ERR[e] || String(e || 'Unbekannter Fehler');
 
   async function apiGet() {
@@ -113,6 +118,7 @@
     if (!r.ok) throw new Error('Server antwortet nicht (' + r.status + ')');
     const j = await r.json();
     if (!j.ok) throw new Error(errText(j.error));
+    S.oldScript = !j.at;
     return j;
   }
   async function apiPost(action, body = {}) {
@@ -123,8 +129,11 @@
         headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // vermeidet CORS-Preflight
         body: JSON.stringify({ apiKey: API_KEY, adminKey: S.pwd, action, ...body })
       });
-      j = await r.json();
+      const text = await r.text();
+      try { j = JSON.parse(text); }
+      catch (_) { throw new Error(OLD_SCRIPT); }
     } catch (e) {
+      if (e.message === OLD_SCRIPT) throw e;
       throw new Error(e.name === 'AbortError' ? 'Zeitüberschreitung – bitte erneut versuchen' : 'Keine Verbindung zum Server');
     }
     if (!j.ok) {
@@ -227,26 +236,41 @@
   }
 
   /* ===== Prognose ===== */
+  // Tage zwischen a und b ohne Spielpausen
+  function activeDays(a, b) {
+    let d = Math.max(0, b - a);
+    BREAKS.forEach((p) => { d -= Math.max(0, Math.min(b, p.to) - Math.max(a, p.from)); });
+    return d / DAY;
+  }
   function forecast(rows, now = Date.now()) {
     const se = season(now);
     const inSeason = rows.filter((r) => r.t >= se.start && r.t <= now);
     const total = sum(inSeason, (r) => r.amount);
-    const elapsedDays = (now - se.start) / DAY;
-    if (elapsedDays < 7 || !inSeason.length) return null;
-    // Wochensummen der letzten 8 Wochen (nur innerhalb der Saison)
+    const elapsed = activeDays(se.start, now);
+    if (elapsed < 7 || !inSeason.length) return null;
+    // Wochensummen der letzten 8 Spielwochen (Wochen in einer Pause zählen nicht)
     const weeks = [];
-    for (let w = 0; w < 8; w++) {
-      const to = now - w * 7 * DAY, from = to - 7 * DAY;
+    for (let w = 0, to = now; weeks.length < 8 && w < 30; w++, to -= 7 * DAY) {
+      const from = to - 7 * DAY;
       if (from < se.start) break;
+      if (activeDays(from, to) < 3.5) continue;
       weeks.push(sum(inSeason.filter((r) => r.t > from && r.t <= to), (r) => r.amount));
     }
-    const rate = weeks.length >= 2 ? sum(weeks, (x) => x) / weeks.length : total / elapsedDays * 7;
+    const rate = weeks.length >= 2 ? sum(weeks, (x) => x) / weeks.length : total / elapsed * 7;
     const sd = weeks.length >= 2 ? Math.sqrt(sum(weeks, (x) => (x - rate) ** 2) / (weeks.length - 1)) : rate * 0.5;
-    const remW = Math.max(0, (se.end - now) / (7 * DAY));
+    const remW = activeDays(now, se.end) / 7;
     const value = total + rate * remW;
     const spread = sd * Math.sqrt(remW);
+    // Verlauf der Prognose: flach während einer Pause
+    const path = [[now, total]];
+    BREAKS.filter((p) => p.to > now && p.from < se.end).sort((a, b) => a.from - b.from).forEach((p) => {
+      const a = Math.max(now, p.from), b = Math.min(se.end, p.to);
+      path.push([a, total + rate * activeDays(now, a) / 7], [b, total + rate * activeDays(now, b) / 7]);
+    });
+    path.push([se.end, value]);
+    const breaks = BREAKS.filter((p) => p.to > se.start && p.from < se.end);
     const r10 = (x) => Math.round(x / 10) * 10;
-    return { season: se, total, rate, weeks: weeks.length, value: r10(value), lo: r10(Math.max(total, value - spread)), hi: r10(value + spread) };
+    return { season: se, total, rate, weeks: weeks.length, path, breaks, value: r10(value), lo: r10(Math.max(total, value - spread)), hi: r10(value + spread) };
   }
 
   /* ===== Diagramm (SVG, ohne Bibliothek) ===== */
@@ -289,9 +313,20 @@
     const lx = x(pts[pts.length - 1][0]), ly = y(run);
     let f = '';
     if (fc) {
-      const ex = x(to);
-      f = '<polygon points="' + lx.toFixed(1) + ',' + ly.toFixed(1) + ' ' + ex.toFixed(1) + ',' + y(fc.hi).toFixed(1) + ' ' + ex.toFixed(1) + ',' + y(fc.lo).toFixed(1) + '" fill="var(--accent)" fill-opacity=".1"/>' +
-        '<path d="M' + lx.toFixed(1) + ',' + ly.toFixed(1) + ' L' + ex.toFixed(1) + ',' + y(fc.value).toFixed(1) + '" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 5" fill="none"/>';
+      fc.breaks.forEach((p) => {
+        const a = x(Math.max(from, p.from)), b = x(Math.min(to, p.to));
+        if (b - a < 2) return;
+        f += '<rect x="' + a.toFixed(1) + '" y="' + T + '" width="' + (b - a).toFixed(1) + '" height="' + (H - T - B) + '" fill="#1C2430" fill-opacity=".55"/>' +
+          '<text x="' + ((a + b) / 2).toFixed(1) + '" y="' + (T + 12) + '" text-anchor="middle" font-size="10">Pause</text>';
+      });
+      // Spanne proportional zum Prognose-Zuwachs
+      const grow = Math.max(fc.value - fc.total, 1);
+      const at = (v, edge) => fc.total + (v - fc.total) * (edge - fc.total) / grow;
+      const P = fc.path.map(([t, v]) => [x(t), v]);
+      const up = P.map(([xx, v]) => xx.toFixed(1) + ',' + y(at(v, fc.hi)).toFixed(1));
+      const lo = P.slice().reverse().map(([xx, v]) => xx.toFixed(1) + ',' + y(at(v, fc.lo)).toFixed(1));
+      f += '<polygon points="' + up.concat(lo).join(' ') + '" fill="var(--accent)" fill-opacity=".1"/>' +
+        '<path d="' + P.map(([xx, v], k) => (k ? 'L' : 'M') + xx.toFixed(1) + ',' + y(v).toFixed(1)).join(' ') + '" stroke="var(--accent)" stroke-width="2" stroke-dasharray="5 5" fill="none"/>';
     }
     const label = 'Kumulierter Verlauf: ' + eur(run) + (fc ? ', Prognose ' + eur0(fc.value) : '');
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + g + f +
@@ -378,7 +413,7 @@
     let note = '';
     if (S.range === 'saison') {
       note = fc
-        ? '<p class="note">Bei aktuellem Tempo (ca. ' + eur0(fc.rate) + ' pro Woche) landet die Kasse am Saisonende (30.06.) bei <b>ca. ' + eur0(fc.value) + '</b>, wahrscheinlich zwischen ' + eur0(fc.lo) + ' und ' + eur0(fc.hi) + '. Basis: ' + (fc.weeks >= 2 ? 'die letzten ' + fc.weeks + ' Wochen' : 'der bisherige Saisonschnitt') + '.</p>'
+        ? '<p class="note">Bei aktuellem Tempo (ca. ' + eur0(fc.rate) + ' pro Woche) landet die Kasse am Saisonende (30.06.) bei <b>ca. ' + eur0(fc.value) + '</b>, wahrscheinlich zwischen ' + eur0(fc.lo) + ' und ' + eur0(fc.hi) + '. Basis: ' + (fc.weeks >= 2 ? 'die letzten ' + fc.weeks + ' Spielwochen' : 'der bisherige Saisonschnitt') + '.' + (fc.breaks.length ? ' ' + fc.breaks.map((p) => esc(p.label) + ' ' + pad(new Date(p.from).getDate()) + '.' + pad(new Date(p.from).getMonth() + 1) + '.–' + pad(new Date(p.to).getDate()) + '.' + pad(new Date(p.to).getMonth() + 1) + '.').join(', ') + ' ist eingerechnet.' : '') + '</p>'
         : '<p class="note">Für eine Prognose braucht es mindestens eine Woche mit Einträgen in dieser Saison.</p>';
     }
     return head +
@@ -476,6 +511,7 @@
         moreItem('go', 'players', 'Zahlungen', 'Offene Beträge als bezahlt markieren') + '</div>';
     } else {
       h += '<span class="label">Admin-Zugang</span><div class="card">' + loginForm() + '</div>';
+      if (S.oldScript) h += '<p class="note" style="color:var(--warn)">Hinweis: ' + esc(OLD_SCRIPT) + '. Erst dann funktioniert die Admin-Anmeldung.</p>';
     }
     h += '<span class="label">Daten</span><div class="list">' +
       moreItem('export', '', 'Export als CSV', 'Für Excel, mit allen Einträgen') +

@@ -131,7 +131,7 @@ button.item:active{background:var(--surface2)}
 
 /* Login */
 .login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;gap:28px;padding:32px 22px calc(32px + var(--safe-b))}
-.login .logo{width:96px;height:96px;border-radius:50%;background:#fff;padding:5px;margin:0 auto}
+.login .logo{display:block;width:96px;height:96px;border-radius:50%;background:#fff;padding:5px;margin:0 auto}
 .login h1{text-align:center;font-size:28px;font-weight:800}
 .login p{text-align:center;margin:6px 0 0}
 .login form{display:flex;flex-direction:column;gap:10px}

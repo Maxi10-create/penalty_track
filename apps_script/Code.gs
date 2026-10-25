@@ -3,7 +3,6 @@
 // Script Properties:
 //   API_KEY         Lesezugriff (steht öffentlich in der App)
 //   ADMIN_PASSWORD  Admin-Passwort (wird NUR hier geprüft, nie in der App gespeichert)
-//   ADMIN_KEY       (alt) wird als Fallback akzeptiert, falls ADMIN_PASSWORD fehlt
 //
 // Nach jeder Änderung: Bereitstellen → Bereitstellungen verwalten → Bearbeiten → Neue Version.
 
@@ -50,8 +49,9 @@ function auth_(e, needAdmin) {
   const api = b.apiKey || e.parameter.apiKey || '';
   if (!prop_('API_KEY') || api !== prop_('API_KEY')) return 'unauthorized';
   if (needAdmin) {
-    const pwd = String(b.adminKey || '');
-    const ok = pwd && (pwd === prop_('ADMIN_PASSWORD') || pwd === prop_('ADMIN_KEY'));
+    const pwd = String(b.adminKey || '').trim();
+    const want = prop_('ADMIN_PASSWORD').trim();
+    const ok = want && pwd === want;
     if (!ok) { Utilities.sleep(800); return 'forbidden'; }
   }
   return '';

@@ -7,13 +7,17 @@ Live: https://maxi10-create.github.io/penalty_track/
 
 ## Aufbau
 
-| Datei | Zweck |
+| Pfad | Zweck |
 | --- | --- |
 | `index.html` | App-Hülle |
-| `assets/app.js` | gesamte App-Logik (ohne externe Bibliotheken) |
-| `assets/app.css` | Design (dunkel, Vereinsgrün) |
+| `assets/js/app.js` | gesamte App-Logik (ohne externe Bibliotheken) |
+| `assets/css/app.css` | Design (dunkel, Vereinsgrün) |
+| `assets/img/` | Logos |
 | `manifest.webmanifest` | „Zum Home-Bildschirm“ als App |
 | `apps_script/Code.gs` | API für Google Sheets |
+| `tools/excel-vorlage/` | alte Excel-Lösung, nur Referenz |
+
+Architektur: [ARCHITECTURE.md](ARCHITECTURE.md)
 
 ## Funktionen
 
@@ -29,7 +33,7 @@ Spieler können alles ansehen. Ändern darf nur, wer die 4-stellige Admin-PIN ke
 
 1. Google Sheet öffnen → Erweiterungen → Apps Script → Inhalt von `apps_script/Code.gs` einfügen und speichern.
 2. Projekteinstellungen → Script-Properties:
-   - `API_KEY` (bleibt wie bisher, steht in `assets/app.js`)
+   - `API_KEY` (bleibt wie bisher, steht in `assets/js/app.js`)
    - `ADMIN_PASSWORD` = Admin-PIN (genau 4 Ziffern, z. B. `4711`)
 3. Bereitstellen → Bereitstellungen verwalten → Bearbeiten (Stift) → Version „Neue Version“ → Bereitstellen.
    So bleibt die `/exec`-URL gleich.

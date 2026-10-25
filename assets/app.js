@@ -71,7 +71,7 @@
   function normalize(d) {
     const rows = (d.rows || []).map((r) => {
       const t = Date.parse(r.ts);
-      return { id: String(r.id || ''), name: String(r.name || ''), fine: String(r.fine || ''), amount: num(r.amount), t: Number.isFinite(t) ? t : 0, paid: r.paid === true || String(r.paid).toUpperCase() === 'TRUE' };
+      return { id: String(r.id || ''), name: String(r.name || ''), fine: String(r.fine || '').trim() || 'Ohne Strafenart', amount: num(r.amount), t: Number.isFinite(t) ? t : 0, paid: r.paid === true || String(r.paid).toUpperCase() === 'TRUE' };
     }).filter((r) => r.name);
     rows.sort((a, b) => b.t - a.t);
     return {

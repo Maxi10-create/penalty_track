@@ -30,7 +30,8 @@
     busy: false,
     add: { sel: new Set(), fine: '', day: 'heute', date: '', q: '' },
     range: 'saison', pq: '', pfilter: 'alle',
-    editFine: ''
+    editFine: '',
+    pin: '', pinErr: false
   };
   const savedRole = store.get(LS.role);
   S.role = savedRole === 'admin' && S.pwd ? 'admin' : (savedRole === 'player' || savedRole === 'Spieler') ? 'player' : '';
@@ -110,7 +111,7 @@
     finally { clearTimeout(timer); }
   }
   const OLD_SCRIPT = 'Apps Script läuft noch in der alten Version – bitte „Neue Version“ bereitstellen';
-  const ERR = { unauthorized: 'API-Schlüssel ungültig', forbidden: 'Admin-Passwort ungültig', 'not found': 'Eintrag nicht gefunden', 'unknown action': OLD_SCRIPT };
+  const ERR = { unauthorized: 'API-Schlüssel ungültig', forbidden: 'Falscher PIN', locked: 'Zu viele Fehlversuche – Admin-Login für 15 Minuten gesperrt', 'not found': 'Eintrag nicht gefunden', 'unknown action': OLD_SCRIPT };
   const errText = (e) => ERR[e] || String(e || 'Unbekannter Fehler');
 
   async function apiGet() {
@@ -355,8 +356,12 @@
       '<div class="divider">oder</div>' + loginForm() + '</div>';
   }
   function loginForm() {
-    return '<form data-form="login"><label class="field"><input id="pwd" type="password" autocomplete="current-password" placeholder="Admin-Passwort" aria-label="Admin-Passwort" required></label>' +
-      '<button class="btn ghost" type="submit"' + (S.busy ? ' disabled' : '') + '>' + (S.busy ? 'Prüfe …' : 'Als Admin anmelden') + '</button></form>';
+    const dots = [0, 1, 2, 3].map((i) => '<i' + (i < S.pin.length ? ' class="on"' : '') + '></i>').join('');
+    const key = (d) => '<button type="button" data-a="pin" data-v="' + d + '"' + (S.busy ? ' disabled' : '') + '>' + d + '</button>';
+    return '<div class="pinpad' + (S.pinErr ? ' err' : '') + '"><span class="label" style="text-align:center">' + (S.busy ? 'Prüfe …' : 'Admin-PIN') + '</span>' +
+      '<div class="dots" role="status" aria-label="' + S.pin.length + ' von 4 Ziffern">' + dots + '</div>' +
+      '<div class="keys">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(key).join('') + '<span></span>' + key(0) +
+      '<button type="button" data-a="pinDel" aria-label="Löschen"' + (S.busy ? ' disabled' : '') + '>⌫</button></div></div>';
   }
 
   function viewHome() {
@@ -598,7 +603,7 @@
   function logout(expired) {
     S.role = ''; S.pwd = '';
     store.del(LS.role); store.del(LS.pwd);
-    if (expired) toast('Admin-Passwort ungültig – bitte neu anmelden', true);
+    if (expired) toast('Admin-PIN ungültig – bitte neu anmelden', true);
     go('home', '', true);
     render();
   }
@@ -650,6 +655,8 @@
     fine: (el) => { S.add.fine = el.dataset.arg; render(); },
     day: (el) => { S.add.day = el.dataset.v; render(); },
     saveAdd,
+    pin: (el) => { if (S.busy || S.pin.length >= 4) return; S.pin += el.dataset.v; render(); if (S.pin.length === 4) forms.login(); },
+    pinDel: () => { S.pin = S.pin.slice(0, -1); render(); },
     togglePaid: (el) => {
       const r = S.data.rows.find((x) => x.id === el.dataset.id);
       if (!r || r.id.startsWith('tmp-')) return;
@@ -684,13 +691,14 @@
   };
   const forms = {
     login: () => {
-      const pwd = document.getElementById('pwd').value.trim();
-      if (!pwd) return;
+      const pwd = S.pin;
+      if (pwd.length !== 4) return;
       const prev = S.pwd;
       S.pwd = pwd;
       run(async () => {
         try { await apiPost('check_admin'); }
-        catch (e) { S.pwd = prev; throw e; }
+        catch (e) { S.pwd = prev; S.pin = ''; S.pinErr = true; setTimeout(() => { S.pinErr = false; render(); }, 600); throw e; }
+        S.pin = '';
         S.role = 'admin';
         store.set(LS.role, 'admin'); store.set(LS.pwd, pwd);
         go('home', '', true);
@@ -730,6 +738,11 @@
     else if (k === 'aq') S.add.q = ev.target.value;
     else if (k === 'adate') { S.add.date = ev.target.value; return; }
     render();
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (!document.querySelector('.pinpad') || (ev.target && ev.target.tagName === 'INPUT')) return;
+    if (/^[0-9]$/.test(ev.key)) actions.pin({ dataset: { v: ev.key } });
+    else if (ev.key === 'Backspace') actions.pinDel();
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && S.role && Date.now() - S.lastSync > 60000) refresh(true);

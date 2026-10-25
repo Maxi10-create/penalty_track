@@ -147,3 +147,14 @@ button.item:active{background:var(--surface2)}
 @keyframes sh{to{background-position:-200% 0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pinpad{display:flex;flex-direction:column;gap:16px}
+.dots{display:flex;justify-content:center;gap:16px}
+.dots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--muted)}
+.dots i.on{background:var(--accent);border-color:var(--accent)}
+.pinpad.err .dots{animation:shake .4s}
+.pinpad.err .dots i{border-color:var(--danger)}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.keys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:300px;width:100%;margin:0 auto}
+.keys button{height:60px;border-radius:16px;border:1px solid var(--line);background:var(--surface);font-size:24px;font-weight:600}
+.keys button:active{background:var(--surface2)}
+.keys button:disabled{opacity:.5}

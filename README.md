@@ -1,23 +1,37 @@
----
-title: Penalty Track (Static)
-emoji: 📦
-colorFrom: blue
-colorTo: green
-sdk: static
-app_file: index.html
----
+# Strafenkasse ASV Natz
 
-# Penalty Track (HTML + Google Sheets)
+Handy-optimierte Web-App für die Strafenkasse des ASV Natz.
+Läuft als statische Seite auf GitHub Pages, Daten liegen in Google Sheets (Apps Script als API).
 
-- **Start:** Spieler/Admin Auswahl (Admin-Passwort: `admin2024`, Spieler: nur Klick; intern `2024`)
-- **Tab 1:** Dashboard (Pott Summe €, Top 3, Chart kumuliert)
-- **Tab 2:** Detail pro Spieler
-- **Tab 3:** Erfassung (Admin) – Multi-Spieler + Strafe + Zeit
-- **Tab 4:** Stammdaten (Admin) – Spieler & Strafen verwalten
+Live: https://maxi10-create.github.io/penalty_track/
 
-## Einrichtung
-1) Google Sheet + Apps Script → `apps_script/Code.gs` in den Editor kopieren  
-   - Script Properties: `API_KEY`, `ADMIN_KEY` setzen  
-   - **Deploy → Web App** (Anyone with link) → `/exec` URL kopieren  
-2) GitHub Pages: Settings → Pages → Deploy from branch (`main`/root)  
-3) App öffnen → ⚙️ Konfiguration: API URL, API Key, (optional) Admin Key eintragen
+## Aufbau
+
+| Datei | Zweck |
+| --- | --- |
+| `index.html` | App-Hülle |
+| `assets/app.js` | gesamte App-Logik (ohne externe Bibliotheken) |
+| `assets/app.css` | Design (dunkel, Vereinsgrün) |
+| `manifest.webmanifest` | „Zum Home-Bildschirm“ als App |
+| `apps_script/Code.gs` | API für Google Sheets |
+
+## Funktionen
+
+- **Übersicht:** Strafen gesamt, bezahlt/offen, Top-Sünder, letzte Einträge
+- **Strafe erfassen (+):** Spieler antippen, Strafe antippen, Datum, speichern (mehrere Spieler in einem Rutsch)
+- **Auswertung:** Verlauf für 4 Wochen / Saison / Gesamt, Prognose bis Saisonende (30.06.), häufigste Vergehen, Ranking
+- **Spieler:** Suche, offene Beträge, Detailansicht mit „bezahlt/offen“ pro Strafe
+- **Mehr:** Strafenkatalog, Kader, CSV-Export, An-/Abmelden
+
+Spieler können alles ansehen. Ändern darf nur, wer das Admin-Passwort kennt; das Passwort wird im Apps Script geprüft und steht nicht im Quelltext.
+
+## Apps Script einrichten / aktualisieren
+
+1. Google Sheet öffnen → Erweiterungen → Apps Script → Inhalt von `apps_script/Code.gs` einfügen und speichern.
+2. Projekteinstellungen → Script-Properties:
+   - `API_KEY` (bleibt wie bisher, steht in `assets/app.js`)
+   - `ADMIN_PASSWORD` = neues Admin-Passwort
+3. Bereitstellen → Bereitstellungen verwalten → Bearbeiten (Stift) → Version „Neue Version“ → Bereitstellen.
+   So bleibt die `/exec`-URL gleich.
+
+Das Script ergänzt im Blatt `Daten` automatisch die Spalten `paid` und `paidAt`.

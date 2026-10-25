@@ -59,6 +59,20 @@ function auth_(e, needAdmin) {
 
 /* ---------- Lesen (mit Cache) ---------- */
 
+// Spalten in Players/Fines über die Kopfzeile finden (Reihenfolge egal, auch deutsche Namen)
+function table_(sheetName, header) {
+  const sh = sheet_(sheetName, header);
+  const vals = sh.getDataRange().getValues();
+  const head = (vals.shift() || []).map(function (h) { return String(h).trim().toLowerCase(); });
+  const find = function (names, dflt) {
+    for (let i = 0; i < names.length; i++) { const k = head.indexOf(names[i]); if (k >= 0) return k; }
+    return dflt;
+  };
+  const name = find(['name', 'vergehen', 'strafe', 'spieler', 'strafenart'], 0);
+  const amount = find(['amount', 'betrag', 'euro', '€'], name === 0 ? 1 : 0);
+  return { sh: sh, vals: vals, width: Math.max(head.length, name + 1, amount + 1), name: name, amount: amount };
+}
+
 function readAll_() {
   const d = dataSheet_();
   const vals = d.sh.getDataRange().getValues(); vals.shift();
@@ -73,11 +87,11 @@ function readAll_() {
     };
   });
 
-  const pVals = sheet_(SHEET_PLAY, ['name']).getDataRange().getValues(); pVals.shift();
-  const players = pVals.filter(function (r) { return r[0] !== ''; }).map(function (r) { return { name: String(r[0]) }; });
+  const P = table_(SHEET_PLAY, ['name']);
+  const players = P.vals.filter(function (r) { return r[P.name] !== ''; }).map(function (r) { return { name: String(r[P.name]) }; });
 
-  const fVals = sheet_(SHEET_FINE, ['name', 'amount']).getDataRange().getValues(); fVals.shift();
-  const fines = fVals.filter(function (r) { return r[0] !== ''; }).map(function (r) { return { name: String(r[0]), amount: Number(r[1] || 0) }; });
+  const F = table_(SHEET_FINE, ['name', 'amount']);
+  const fines = F.vals.filter(function (r) { return r[F.name] !== ''; }).map(function (r) { return { name: String(r[F.name]), amount: Number(r[F.amount] || 0) }; });
 
   return { ok: true, rows: rows, players: players, fines: fines, at: new Date().toISOString() };
 }
@@ -188,9 +202,10 @@ function handle_(action, b) {
 
   if (action === 'upsert_player') {
     const name = String(b.name || '').trim(); if (!name) return { ok: false, error: 'missing name' };
-    const sh = sheet_(SHEET_PLAY, ['name']);
-    const vals = sh.getDataRange().getValues(); vals.shift();
-    if (!vals.some(function (r) { return String(r[0]) === name; })) sh.appendRow([name]);
+    const T = table_(SHEET_PLAY, ['name']);
+    if (!T.vals.some(function (r) { return String(r[T.name]) === name; })) {
+      const row = new Array(T.width).fill(''); row[T.name] = name; T.sh.appendRow(row);
+    }
     return { ok: true };
   }
   if (action === 'delete_player') return deleteByName_(SHEET_PLAY, ['name'], b.name);
@@ -198,12 +213,11 @@ function handle_(action, b) {
   if (action === 'upsert_fine') {
     const name = String(b.name || '').trim(); const amount = Number(b.amount);
     if (!name || !isFinite(amount)) return { ok: false, error: 'missing name/amount' };
-    const sh = sheet_(SHEET_FINE, ['name', 'amount']);
-    const vals = sh.getDataRange().getValues(); vals.shift();
-    for (let r = 0; r < vals.length; r++) {
-      if (String(vals[r][0]) === name) { sh.getRange(r + 2, 2).setValue(amount); return { ok: true }; }
+    const T = table_(SHEET_FINE, ['name', 'amount']);
+    for (let r = 0; r < T.vals.length; r++) {
+      if (String(T.vals[r][T.name]) === name) { T.sh.getRange(r + 2, T.amount + 1).setValue(amount); return { ok: true }; }
     }
-    sh.appendRow([name, amount]);
+    const row = new Array(T.width).fill(''); row[T.name] = name; row[T.amount] = amount; T.sh.appendRow(row);
     return { ok: true };
   }
   if (action === 'delete_fine') return deleteByName_(SHEET_FINE, ['name', 'amount'], b.name);
@@ -213,8 +227,7 @@ function handle_(action, b) {
 
 function deleteByName_(sheetName, header, name) {
   name = String(name || ''); if (!name) return { ok: false, error: 'missing name' };
-  const sh = sheet_(sheetName, header);
-  const vals = sh.getDataRange().getValues(); vals.shift();
-  for (let r = 0; r < vals.length; r++) if (String(vals[r][0]) === name) { sh.deleteRow(r + 2); return { ok: true }; }
+  const T = table_(sheetName, header);
+  for (let r = 0; r < T.vals.length; r++) if (String(T.vals[r][T.name]) === name) { T.sh.deleteRow(r + 2); return { ok: true }; }
   return { ok: false, error: 'not found' };
 }

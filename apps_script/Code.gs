@@ -2,7 +2,7 @@
 //
 // Script Properties:
 //   API_KEY         Lesezugriff (steht öffentlich in der App)
-//   ADMIN_PASSWORD  Admin-Passwort (wird NUR hier geprüft, nie in der App gespeichert)
+//   ADMIN_PASSWORD  Admin-PIN, 4 Ziffern (wird NUR hier geprüft; nach 5 Fehlversuchen 15 Min. Sperre)
 //
 // Nach jeder Änderung: Bereitstellen → Bereitstellungen verwalten → Bearbeiten → Neue Version.
 
@@ -49,10 +49,19 @@ function auth_(e, needAdmin) {
   const api = b.apiKey || e.parameter.apiKey || '';
   if (!prop_('API_KEY') || api !== prop_('API_KEY')) return 'unauthorized';
   if (needAdmin) {
+    // Schutz gegen Durchprobieren der PIN: nach 5 Fehlversuchen 15 Minuten Sperre
+    const cache = CacheService.getScriptCache();
+    if (cache.get('pt_lock')) return 'locked';
     const pwd = String(b.adminKey || '').trim();
     const want = prop_('ADMIN_PASSWORD').trim();
-    const ok = want && pwd === want;
-    if (!ok) { Utilities.sleep(800); return 'forbidden'; }
+    if (!want || pwd !== want) {
+      const fails = Number(cache.get('pt_fail') || 0) + 1;
+      cache.put('pt_fail', String(fails), 900);
+      if (fails >= 5) { cache.put('pt_lock', '1', 900); cache.remove('pt_fail'); }
+      Utilities.sleep(800);
+      return 'forbidden';
+    }
+    cache.remove('pt_fail');
   }
   return '';
 }

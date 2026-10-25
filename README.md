@@ -23,14 +23,14 @@ Live: https://maxi10-create.github.io/penalty_track/
 - **Spieler:** Suche, offene Beträge, Detailansicht mit „bezahlt/offen“ pro Strafe
 - **Mehr:** Strafenkatalog, Kader, CSV-Export, An-/Abmelden
 
-Spieler können alles ansehen. Ändern darf nur, wer das Admin-Passwort kennt; das Passwort wird im Apps Script geprüft und steht nicht im Quelltext.
+Spieler können alles ansehen. Ändern darf nur, wer die 4-stellige Admin-PIN kennt; sie wird im Apps Script geprüft und steht nicht im Quelltext. Nach 5 Fehlversuchen ist der Admin-Login 15 Minuten gesperrt.
 
 ## Apps Script einrichten / aktualisieren
 
 1. Google Sheet öffnen → Erweiterungen → Apps Script → Inhalt von `apps_script/Code.gs` einfügen und speichern.
 2. Projekteinstellungen → Script-Properties:
    - `API_KEY` (bleibt wie bisher, steht in `assets/app.js`)
-   - `ADMIN_PASSWORD` = neues Admin-Passwort
+   - `ADMIN_PASSWORD` = Admin-PIN (genau 4 Ziffern, z. B. `4711`)
 3. Bereitstellen → Bereitstellungen verwalten → Bearbeiten (Stift) → Version „Neue Version“ → Bereitstellen.
    So bleibt die `/exec`-URL gleich.
 

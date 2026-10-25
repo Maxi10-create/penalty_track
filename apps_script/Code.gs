@@ -25,17 +25,40 @@ function sheet_(name, header) {
   return sh;
 }
 
-// Fehlende Spalten (z. B. paid/paidAt) rechts anhängen und Spaltenindex liefern.
+// Spalten über die Kopfzeile finden (Groß/Klein egal, auch deutsche Namen).
+// Gibt es für ein Feld mehrere passende Spalten, wird beim Lesen die erste gefüllte genommen
+// und beim Schreiben in alle geschrieben. Fehlende Spalten (z. B. paid/paidAt) werden rechts angehängt.
+const DATA_ALIASES = {
+  id: ['id'],
+  name: ['name', 'spieler', 'player'],
+  fine: ['fine', 'vergehen', 'strafe', 'strafenart', 'penalty', 'grund', 'reason'],
+  amount: ['amount', 'betrag', 'euro'],
+  ts: ['ts', 'datum', 'date', 'zeit', 'timestamp'],
+  paid: ['paid', 'bezahlt'],
+  paidAt: ['paidat', 'bezahltam', 'bezahlt am']
+};
 function dataSheet_() {
   const sh = sheet_(SHEET_DATA, DATA_COLS);
   const lastCol = Math.max(sh.getLastColumn(), 1);
-  const header = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(String);
+  const header = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h).trim(); });
+  const low = header.map(function (h) { return h.toLowerCase(); });
+  const cols = {};
   DATA_COLS.forEach(function (c) {
-    if (header.indexOf(c) < 0) { header.push(c); sh.getRange(1, header.length).setValue(c); }
+    cols[c] = [];
+    DATA_ALIASES[c].forEach(function (a) { low.forEach(function (h, i) { if (h === a && cols[c].indexOf(i) < 0) cols[c].push(i); }); });
+    if (!cols[c].length) { header.push(c); low.push(c.toLowerCase()); sh.getRange(1, header.length).setValue(c); cols[c].push(header.length - 1); }
   });
+  const known = {};
+  Object.keys(cols).forEach(function (c) { cols[c].forEach(function (i) { known[i] = true; }); });
   const idx = {};
-  header.forEach(function (h, i) { idx[h] = i; });
-  return { sh: sh, header: header, idx: idx };
+  DATA_COLS.forEach(function (c) { idx[c] = cols[c][0]; });
+  const get = function (r, c) {
+    for (let k = 0; k < cols[c].length; k++) { const v = r[cols[c][k]]; if (v !== '' && v != null) return v; }
+    return '';
+  };
+  const set = function (row, c, v) { cols[c].forEach(function (i) { row[i] = v; }); };
+  const other = header.map(function (_, i) { return i; }).filter(function (i) { return !known[i]; });
+  return { sh: sh, header: header, idx: idx, cols: cols, get: get, set: set, other: other };
 }
 
 function body_(e) {
@@ -85,22 +108,32 @@ function table_(sheetName, header) {
 function readAll_() {
   const d = dataSheet_();
   const vals = d.sh.getDataRange().getValues(); vals.shift();
-  const I = d.idx;
-  const rows = vals.filter(function (r) { return r[I.id] !== '' || r[I.name] !== ''; }).map(function (r) {
-    const ts = r[I.ts] instanceof Date ? r[I.ts].toISOString() : String(r[I.ts] || '');
-    const paidAt = r[I.paidAt] instanceof Date ? r[I.paidAt].toISOString() : String(r[I.paidAt] || '');
-    return {
-      id: String(r[I.id]), name: String(r[I.name]), fine: String(r[I.fine]),
-      amount: Number(r[I.amount] || 0), ts: ts,
-      paid: r[I.paid] === true || String(r[I.paid]).toUpperCase() === 'TRUE', paidAt: paidAt
-    };
-  });
+  const G = d.get;
+  const iso = function (v) { return v instanceof Date ? v.toISOString() : String(v || ''); };
 
   const P = table_(SHEET_PLAY, ['name']);
   const players = P.vals.filter(function (r) { return r[P.name] !== ''; }).map(function (r) { return { name: String(r[P.name]) }; });
 
   const F = table_(SHEET_FINE, ['name', 'amount']);
   const fines = F.vals.filter(function (r) { return r[F.name] !== ''; }).map(function (r) { return { name: String(r[F.name]), amount: Number(r[F.amount] || 0) }; });
+  const fineNames = {}; fines.forEach(function (f) { fineNames[f.name.toLowerCase()] = f.name; });
+
+  const rows = vals.filter(function (r) { return G(r, 'id') !== '' || G(r, 'name') !== ''; }).map(function (r) {
+    let fine = String(G(r, 'fine')).trim();
+    // Notlösung: Strafenart steht in einer unbekannten Spalte → Wert nehmen, der im Strafenkatalog vorkommt
+    if (!fine) {
+      for (let k = 0; k < d.other.length; k++) {
+        const v = String(r[d.other[k]] || '').trim();
+        if (v && fineNames[v.toLowerCase()]) { fine = fineNames[v.toLowerCase()]; break; }
+      }
+    }
+    const paid = G(r, 'paid');
+    return {
+      id: String(G(r, 'id')), name: String(G(r, 'name')), fine: fine,
+      amount: Number(String(G(r, 'amount') || 0).replace(',', '.')) || 0, ts: iso(G(r, 'ts')),
+      paid: paid === true || String(paid).toUpperCase() === 'TRUE', paidAt: iso(G(r, 'paidAt'))
+    };
+  });
 
   return { ok: true, rows: rows, players: players, fines: fines, at: new Date().toISOString() };
 }
@@ -171,12 +204,12 @@ function handle_(action, b) {
       const name = String(x.name || ''), fine = String(x.fine || '');
       if (!name || !fine) return;
       const row = new Array(d.header.length).fill('');
-      row[d.idx.id] = x.id || Utilities.getUuid();
-      row[d.idx.name] = name;
-      row[d.idx.fine] = fine;
-      row[d.idx.amount] = Number(x.amount || 0);
-      row[d.idx.ts] = String(x.ts || new Date().toISOString());
-      row[d.idx.paid] = false;
+      d.set(row, 'id', x.id || Utilities.getUuid());
+      d.set(row, 'name', name);
+      d.set(row, 'fine', fine);
+      d.set(row, 'amount', Number(x.amount || 0));
+      d.set(row, 'ts', String(x.ts || new Date().toISOString()));
+      d.set(row, 'paid', false);
       out.push(row);
     });
     if (!out.length) return { ok: false, error: 'missing name/fine' };

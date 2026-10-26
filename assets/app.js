@@ -31,7 +31,8 @@
     add: { sel: new Set(), fine: '', day: 'heute', date: '', q: '' },
     range: 'saison', pq: '', pfilter: 'alle',
     editFine: '',
-    pin: '', pinErr: false
+    pin: '', pinErr: false,
+    base: { screen: 'home', arg: '' }, sheetPushed: false
   };
   const savedRole = store.get(LS.role);
   S.role = savedRole === 'admin' && S.pwd ? 'admin' : (savedRole === 'player' || savedRole === 'Spieler') ? 'player' : '';
@@ -174,39 +175,65 @@
     users: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7"/><path d="M18 14c2.2.6 3.5 2.8 3.5 6"/>'),
     more: svg('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>'),
     check: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg>',
-    trend: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>',
+    trend: svg('<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>', 18),
     chev: svg('<path d="M9 6l6 6-6 6"/>', 18),
     search: svg('<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>', 18),
-    x: svg('<path d="M6 6l12 12"/><path d="M18 6L6 18"/>', 18)
+    x: svg('<path d="M6 6l12 12"/><path d="M18 6L6 18"/>', 18),
+    back: svg('<path d="M15 5l-7 7 7 7"/>', 24, 2.4),
+    delKey: svg('<path d="M21 5H9l-6 7 6 7h12z"/><path d="M17 9l-5 6"/><path d="M12 9l5 6"/>', 26, 1.8),
+    list: svg('<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>', 18),
+    check2: svg('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>', 18),
+    share: svg('<path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M5 12v8h14v-8"/>', 18),
+    refresh: svg('<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>', 18),
+    trash: svg('<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/>', 20)
   };
 
   /* ===== Routing (Hash → Zurück-Taste funktioniert) ===== */
+  // Seiten liegen in der Tab-Leiste, „push“-Seiten kommen von rechts, „sheet“-Seiten von unten
+  const SCREENS = {
+    home: { title: 'Strafenkasse', tab: 'home' },
+    stats: { title: 'Auswertung', tab: 'stats' },
+    players: { title: 'Spieler', tab: 'players' },
+    more: { title: 'Mehr', tab: 'more' },
+    catalog: { title: 'Strafenkatalog', tab: 'more', push: 'Mehr' },
+    squad: { title: 'Kader', tab: 'more', push: 'Mehr' },
+    player: { sheet: true },
+    add: { sheet: true }
+  };
+  const isSheet = (s) => !!(SCREENS[s] && SCREENS[s].sheet);
   function parseHash() {
     const [screen, ...rest] = location.hash.replace(/^#\/?/, '').split('/');
-    return { screen: screen || 'home', arg: decodeURIComponent(rest.join('/') || '') };
+    return { screen: SCREENS[screen] ? screen : 'home', arg: decodeURIComponent(rest.join('/') || '') };
   }
   function go(screen, arg, replace) {
     const h = '#/' + screen + (arg ? '/' + encodeURIComponent(arg) : '');
     if (location.hash === h) { render(); return; }
+    if (isSheet(screen) && !isSheet(S.route.screen)) S.sheetPushed = true;
     if (replace) location.replace(h); else location.hash = h;
   }
   window.addEventListener('hashchange', () => {
-    const prev = S.route.screen + S.route.arg;
-    S.route = parseHash();
+    const r = parseHash();
+    if (!isSheet(r.screen)) { S.base = r; S.sheetPushed = false; }
+    S.route = r;
     render();
-    if (prev !== S.route.screen + S.route.arg) window.scrollTo(0, 0);
   });
+  // Sheet animiert schließen, dann zur Seite darunter zurück
+  function closeSheet() {
+    const wrap = document.querySelector('.sheet-wrap');
+    const done = () => { if (S.sheetPushed) history.back(); else go(S.base.screen, S.base.arg, true); };
+    if (!wrap || reduceMotion()) { done(); return; }
+    wrap.classList.add('leaving');
+    setTimeout(done, 240);
+  }
+  const reduceMotion = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const haptic = (ms = 8) => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (_) {} };
 
   /* ===== Bausteine ===== */
   const isAdmin = () => S.role === 'admin';
   const skeleton = () => '<div class="skel"></div><div class="skel" style="min-height:160px"></div><div class="skel"></div>';
   const empty = (t) => '<div class="empty">' + esc(t) + '</div>';
-  const back = (label = 'Zurück') => '<button type="button" data-a="back">' + esc(label) + '</button>';
-  function header() {
-    return '<header class="top"><img src="assets/logo-96.webp" width="44" height="44" alt="ASV Natz Logo">' +
-      '<div class="t"><span class="eyebrow">ASV Natz</span><span class="title">Strafenkasse</span></div>' +
-      '<button type="button" class="chip" data-a="go" data-s="more">' + (isAdmin() ? 'Admin' : 'Spieler') + '</button></header>';
-  }
+  const section = (title, body, right) => '<section class="group">' + (title ? '<div class="group-head"><h2>' + esc(title) + '</h2>' + (right || '') + '</div>' : '') + body + '</section>';
   function syncLine() {
     if (S.syncing) return '<p class="sync">Aktualisiere …</p>';
     if (S.syncError) return '<p class="sync">Offline-Stand · <button type="button" class="link" data-a="refresh">Erneut laden</button></p>';
@@ -217,7 +244,7 @@
   function entryItem(r, withName) {
     return '<button type="button" class="item" data-a="go" data-s="player" data-arg="' + esc(r.name) + '">' +
       '<span class="main"><b>' + esc(withName ? r.name : r.fine) + '</b><span class="sub">' + esc(withName ? r.fine + ' · ' : '') + fmtDay(r.t) + '</span></span>' +
-      '<span class="amt">' + eur(r.amount) + '</span></button>';
+      '<span class="amt">' + eur(r.amount) + '</span><span class="chev">' + I.chev + '</span></button>';
   }
   function sparkline(rows) {
     if (rows.length < 2) return '';
@@ -294,7 +321,7 @@
     const y = (v) => T + (1 - v / max) * (H - T - B);
     let g = '';
     for (let v = 0; v <= max + 1e-6; v += step) {
-      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="#1C2430"/>' +
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v).toFixed(1) + '" y2="' + y(v).toFixed(1) + '" stroke="var(--sep)"/>' +
         '<text x="' + (L - 6) + '" y="' + (y(v) + 4).toFixed(1) + '" text-anchor="end">' + esc(eur0(v)) + '</text>';
     }
     // Monatsbeschriftung
@@ -317,7 +344,7 @@
       fc.breaks.forEach((p) => {
         const a = x(Math.max(from, p.from)), b = x(Math.min(to, p.to));
         if (b - a < 2) return;
-        f += '<rect x="' + a.toFixed(1) + '" y="' + T + '" width="' + (b - a).toFixed(1) + '" height="' + (H - T - B) + '" fill="#1C2430" fill-opacity=".55"/>' +
+        f += '<rect x="' + a.toFixed(1) + '" y="' + T + '" width="' + (b - a).toFixed(1) + '" height="' + (H - T - B) + '" fill="var(--fill)" fill-opacity="1"/>' +
           '<text x="' + ((a + b) / 2).toFixed(1) + '" y="' + (T + 12) + '" text-anchor="middle" font-size="10">Pause</text>';
       });
       // Spanne proportional zum Prognose-Zuwachs
@@ -333,7 +360,7 @@
     return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '">' + g + f +
       '<path d="' + line + ' L' + lx.toFixed(1) + ',' + y(0).toFixed(1) + ' L' + x(pts[0][0]).toFixed(1) + ',' + y(0).toFixed(1) + ' Z" fill="var(--accent)" fill-opacity=".16"/>' +
       '<path d="' + line + '" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>' +
-      '<circle cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" r="4.5" fill="var(--bg)" stroke="var(--accent)" stroke-width="2.5"/></svg>';
+      '<circle cx="' + lx.toFixed(1) + '" cy="' + ly.toFixed(1) + '" r="4.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/></svg>';
   }
   function niceStep(x) {
     const p = Math.pow(10, Math.floor(Math.log10(Math.max(x, 1))));
@@ -351,48 +378,46 @@
   /* ===== Screens ===== */
   function viewLogin() {
     return '<div class="login">' +
-      '<div><img class="logo" src="assets/logo-192.png" width="96" height="96" alt="ASV Natz Logo"><h1 style="margin-top:16px">Strafenkasse</h1><p class="muted">ASV Natz</p></div>' +
+      '<div class="login-head"><img class="logo" src="assets/logo-192.png" width="88" height="88" alt="ASV Natz Logo"><h1>Strafenkasse</h1><p>ASV Natz</p></div>' +
       '<button type="button" class="btn primary" data-a="asPlayer">Als Spieler ansehen</button>' +
-      '<div class="divider">oder</div>' + loginForm() + '</div>';
+      '<div class="divider">oder als Admin</div>' + loginForm() + '</div>';
   }
   function loginForm() {
     const dots = [0, 1, 2, 3].map((i) => '<i' + (i < S.pin.length ? ' class="on"' : '') + '></i>').join('');
     const key = (d) => '<button type="button" data-a="pin" data-v="' + d + '"' + (S.busy ? ' disabled' : '') + '>' + d + '</button>';
-    return '<div class="pinpad' + (S.pinErr ? ' err' : '') + '"><span class="label" style="text-align:center">' + (S.busy ? 'Prüfe …' : 'Admin-PIN') + '</span>' +
+    return '<div class="pinpad' + (S.pinErr ? ' err' : '') + '"><span class="pin-label">' + (S.busy ? 'Prüfe …' : 'Admin-PIN eingeben') + '</span>' +
       '<div class="dots" role="status" aria-label="' + S.pin.length + ' von 4 Ziffern">' + dots + '</div>' +
       '<div class="keys">' + [1, 2, 3, 4, 5, 6, 7, 8, 9].map(key).join('') + '<span></span>' + key(0) +
-      '<button type="button" data-a="pinDel" aria-label="Löschen"' + (S.busy ? ' disabled' : '') + '>⌫</button></div></div>';
+      '<button type="button" class="del" data-a="pinDel" aria-label="Löschen"' + (S.busy ? ' disabled' : '') + '>' + I.delKey + '</button></div></div>';
   }
 
   function viewHome() {
-    if (!S.data) return header() + skeleton();
+    if (!S.data) return skeleton();
     const rows = S.data.rows;
     const total = sum(rows, (r) => r.amount), open = sum(rows.filter((r) => !r.paid), (r) => r.amount), paid = total - open;
     const week = sum(rows.filter((r) => r.t > Date.now() - 7 * DAY), (r) => r.amount);
     const fc = forecast(rows);
     const top = playerStats().filter((p) => p.total > 0).sort((a, b) => b.total - a.total).slice(0, 3);
-    return header() +
-      '<section class="card lg" aria-label="Kassenstand">' +
-        '<div class="sec-head"><span class="muted" style="font-size:13px">Strafen gesamt · ' + rows.length + ' Einträge</span>' + (week ? '<span class="delta">+' + eur(week) + ' in 7 Tagen</span>' : '') + '</div>' +
+    const pct = total ? paid / total * 100 : 0;
+    return '<section class="card hero" aria-label="Kassenstand">' +
+        '<div class="hero-head"><span>Strafen gesamt</span>' + (week ? '<span class="delta">+' + eur(week) + ' in 7 Tagen</span>' : '<span>' + rows.length + ' Einträge</span>') + '</div>' +
         '<span class="big">' + eur(total) + '</span>' + sparkline(rows) +
-        '<div class="progress" role="img" aria-label="' + Math.round(total ? paid / total * 100 : 0) + ' Prozent bezahlt"><i style="width:' + (total ? paid / total * 100 : 0).toFixed(1) + '%"></i></div>' +
+        '<div class="progress" role="img" aria-label="' + Math.round(pct) + ' Prozent bezahlt"><i style="width:' + pct.toFixed(1) + '%"></i></div>' +
         '<div class="grid2"><div class="stat"><span>Bezahlt</span><b>' + eur(paid) + '</b></div><div class="stat"><span>Noch offen</span><b class="warn">' + eur(open) + '</b></div></div>' +
       '</section>' +
-      '<button type="button" class="card teaser" data-a="go" data-s="stats">' + I.trend +
-        '<span class="main"><small>' + (fc ? 'Prognose ' + esc(fc.season.label) : 'Auswertung') + '</small><b>' + (fc ? 'ca. ' + eur0(fc.value) + ' <span class="muted" style="font-weight:500;font-size:13px">(' + eur0(fc.lo) + '–' + eur0(fc.hi) + ')</span>' : 'Verlauf & Statistiken') + '</b></span>' +
-        '<span class="muted">' + I.chev + '</span></button>' +
-      '<section style="display:flex;flex-direction:column;gap:10px"><div class="sec-head"><h2 class="h2">Top-Sünder</h2><span class="muted" style="font-size:13px">gesamt</span></div>' +
-        '<div class="list">' + (top.length ? top.map((p, k) =>
+      '<div class="list"><button type="button" class="item" data-a="go" data-s="stats"><span class="icon-tile">' + I.trend + '</span>' +
+        '<span class="main"><b>' + (fc ? 'Prognose: ca. ' + eur0(fc.value) : 'Auswertung') + '</b><span class="sub">' + (fc ? esc(fc.season.label) + ' · ' + eur0(fc.lo) + '–' + eur0(fc.hi) : 'Verlauf und Statistiken') + '</span></span>' +
+        '<span class="chev">' + I.chev + '</span></button></div>' +
+      section('Top-Sünder', '<div class="list">' + (top.length ? top.map((p, k) =>
           '<button type="button" class="item" data-a="go" data-s="player" data-arg="' + esc(p.name) + '"><span class="rank">' + (k + 1) + '</span><span class="avatar">' + esc(initials(p.name)) + '</span>' +
-          '<span class="main"><b>' + esc(p.name) + '</b><span class="sub">' + p.n + (p.n === 1 ? ' Strafe' : ' Strafen') + '</span></span><span class="amt">' + eur(p.total) + '</span></button>').join('') : empty('Noch keine Strafen')) + '</div></section>' +
-      '<section style="display:flex;flex-direction:column;gap:10px"><div class="sec-head"><h2 class="h2">Letzte Einträge</h2><button type="button" class="link" data-a="go" data-s="players">Alle Spieler</button></div>' +
-        '<div class="list">' + (rows.length ? rows.slice(0, 5).map((r) => entryItem(r, true)).join('') : empty('Noch keine Einträge')) + '</div></section>' +
+          '<span class="main"><b>' + esc(p.name) + '</b><span class="sub">' + p.n + (p.n === 1 ? ' Strafe' : ' Strafen') + '</span></span><span class="amt">' + eur(p.total) + '</span><span class="chev">' + I.chev + '</span></button>').join('') : empty('Noch keine Strafen')) + '</div>') +
+      section('Letzte Einträge', '<div class="list">' + (rows.length ? rows.slice(0, 5).map((r) => entryItem(r, true)).join('') : empty('Noch keine Einträge')) + '</div>',
+        '<button type="button" class="link" data-a="go" data-s="players">Alle</button>') +
       syncLine();
   }
 
   function viewStats() {
-    const head = '<h1 class="h1">Auswertung</h1>' +
-      '<div class="seg" role="group" aria-label="Zeitraum">' + [['4w', '4 Wochen'], ['saison', 'Saison'], ['gesamt', 'Gesamt']].map(([k, l]) =>
+    const head = '<div class="seg" role="group" aria-label="Zeitraum">' + [['4w', '4 Wochen'], ['saison', 'Saison'], ['gesamt', 'Gesamt']].map(([k, l]) =>
         '<button type="button" data-a="range" data-v="' + k + '" aria-pressed="' + (S.range === k) + '">' + l + '</button>').join('') + '</div>';
     if (!S.data) return head + skeleton();
     const all = S.data.rows, now = Date.now(), se = season(now);
@@ -422,7 +447,7 @@
         : '<p class="note">Für eine Prognose braucht es mindestens eine Woche mit Einträgen in dieser Saison.</p>';
     }
     return head +
-      '<section class="card lg"><div class="sec-head"><b>' + title + '</b><span class="muted" style="font-size:12px">' + esc(sub) + '</span></div>' +
+      '<section class="card"><div class="card-head"><b>' + title + '</b><span>' + esc(sub) + '</span></div>' +
         (rows.length || fc ? chart(all, from, to, fc) : empty('Keine Einträge in diesem Zeitraum')) +
         '<div class="legend"><span><i></i>Ist</span>' + (fc ? '<span><i class="dash"></i>Prognose</span><span><i class="band"></i>Spanne</span>' : '') + '</div>' + note + '</section>' +
       '<div class="grid2">' +
@@ -431,14 +456,13 @@
         '<div class="kpi"><span>Ø pro Spieler</span><b>' + eur(people ? total / people : 0) + '</b></div>' +
         '<div class="kpi"><span>Häufigster Tag</span><b>' + topWd + '</b></div>' +
       '</div>' +
-      '<section class="card lg"><b>Häufigste Vergehen</b>' + bars(fineBars) + '</section>' +
-      '<section class="card lg"><b>Spieler-Ranking</b>' + bars(pBars) + '</section>';
+      section('Häufigste Vergehen', '<div class="card">' + bars(fineBars) + '</div>') +
+      section('Spieler-Ranking', '<div class="card">' + bars(pBars) + '</div>');
   }
 
   function viewPlayers() {
-    const head = '<h1 class="h1">Spieler</h1>' +
-      '<label class="field">' + '<span class="muted">' + I.search + '</span><input id="pq" type="search" data-in="pq" value="' + esc(S.pq) + '" placeholder="Spieler suchen" aria-label="Spieler suchen" autocomplete="off"></label>' +
-      '<div class="pills" role="group" aria-label="Filter">' + [['alle', 'Alle'], ['offen', 'Nur offene']].map(([k, l]) =>
+    const head = '<label class="search">' + I.search + '<input id="pq" type="search" data-in="pq" value="' + esc(S.pq) + '" placeholder="Suchen" aria-label="Spieler suchen" autocomplete="off"></label>' +
+      '<div class="seg" role="group" aria-label="Filter">' + [['alle', 'Alle'], ['offen', 'Nur offene']].map(([k, l]) =>
         '<button type="button" data-a="pfilter" data-v="' + k + '" aria-pressed="' + (S.pfilter === k) + '">' + l + '</button>').join('') + '</div>';
     if (!S.data) return head + skeleton();
     const q = S.pq.trim().toLowerCase();
@@ -447,141 +471,178 @@
       .sort((a, b) => S.pfilter === 'offen' ? b.open - a.open : b.total - a.total || a.name.localeCompare(b.name, 'de'));
     const openSum = sum(list, (p) => p.open);
     return head +
-      (S.pfilter === 'offen' && list.length ? '<p class="muted" style="margin:0;font-size:13px">' + list.length + ' Spieler · zusammen ' + eur(openSum) + ' offen</p>' : '') +
-      '<div class="list">' + (list.length ? list.map((p) =>
+      section(S.pfilter === 'offen' && list.length ? list.length + ' Spieler · ' + eur(openSum) + ' offen' : '',
+        '<div class="list">' + (list.length ? list.map((p) =>
         '<button type="button" class="item" data-a="go" data-s="player" data-arg="' + esc(p.name) + '"><span class="avatar">' + esc(initials(p.name)) + '</span>' +
-        '<span class="main"><b>' + esc(p.name) + '</b><span class="sub">' + p.n + (p.n === 1 ? ' Strafe' : ' Strafen') + ' · gesamt ' + eur(p.total) + '</span></span>' +
-        (p.open > 0 ? '<span class="pill open">offen ' + eur(p.open) + '</span>' : p.n ? '<span class="pill paid">bezahlt</span>' : '') + '</button>').join('')
-        : empty(q ? 'Kein Spieler gefunden' : 'Alle haben bezahlt')) + '</div>';
+        '<span class="main"><b>' + esc(p.name) + '</b><span class="sub">' + p.n + (p.n === 1 ? ' Strafe' : ' Strafen') + ' · ' + eur(p.total) + '</span></span>' +
+        (p.open > 0 ? '<span class="pill open">' + eur(p.open) + '</span>' : p.n ? '<span class="pill paid">bezahlt</span>' : '') + '<span class="chev">' + I.chev + '</span></button>').join('')
+        : empty(q ? 'Kein Spieler gefunden' : 'Alle haben bezahlt')) + '</div>');
   }
 
   function viewPlayer(name) {
-    const head = '<div class="sheet-head">' + back() + '<span class="h2">' + esc(name) + '</span><span style="min-width:70px"></span></div>';
-    if (!S.data) return head + skeleton();
+    if (!S.data) return skeleton();
     const rows = S.data.rows.filter((r) => r.name === name);
-    const total = sum(rows, (r) => r.amount), openRows = rows.filter((r) => !r.paid), open = sum(openRows, (r) => r.amount);
-    return head +
-      '<section class="card lg"><div class="grid2"><div class="stat"><span>Gesamt</span><b>' + eur(total) + '</b></div><div class="stat"><span>Noch offen</span><b class="warn">' + eur(open) + '</b></div></div>' +
-        (isAdmin() && open > 0 ? '<button type="button" class="btn primary sm" data-a="payAll" data-arg="' + esc(name) + '">Alles bezahlt · ' + eur(open) + '</button>' : '') + '</section>' +
-      '<h2 class="h2">Strafen</h2>' +
-      '<div class="list">' + (rows.length ? rows.map((r) =>
-        '<div class="item"><span class="main"><b>' + esc(r.fine) + '</b><span class="sub">' + fmtDay(r.t) + ' · ' + eur(r.amount) + '</span></span>' +
-        (isAdmin()
-          ? '<button type="button" class="pill ' + (r.paid ? 'paid' : 'open') + '" data-a="togglePaid" data-id="' + esc(r.id) + '" aria-label="' + (r.paid ? 'Als offen markieren' : 'Als bezahlt markieren') + '">' + (r.paid ? 'bezahlt' : 'offen') + '</button>' +
-            '<button type="button" class="chip" style="padding:10px" data-a="delEntry" data-id="' + esc(r.id) + '" aria-label="Eintrag löschen">' + I.x + '</button>'
-          : '<span class="pill ' + (r.paid ? 'paid' : 'open') + '">' + (r.paid ? 'bezahlt' : 'offen') + '</span>') +
-        '</div>').join('') : empty('Keine Strafen – vorbildlich!')) + '</div>' +
-      (isAdmin() ? '<p class="sync">Tippe auf „offen“/„bezahlt“, um den Status zu ändern.</p>' : '');
+    const total = sum(rows, (r) => r.amount), open = sum(rows.filter((r) => !r.paid), (r) => r.amount);
+    const admin = isAdmin();
+    return '<div class="profile"><span class="avatar lg">' + esc(initials(name)) + '</span><h2>' + esc(name) + '</h2>' +
+        '<div class="grid2"><div class="stat"><span>Gesamt</span><b>' + eur(total) + '</b></div><div class="stat"><span>Noch offen</span><b class="warn">' + eur(open) + '</b></div></div>' +
+        (admin && open > 0 ? '<button type="button" class="btn primary" data-a="payAll" data-arg="' + esc(name) + '">Alles bezahlt · ' + eur(open) + '</button>' : '') + '</div>' +
+      section(rows.length + (rows.length === 1 ? ' Strafe' : ' Strafen'), '<div class="list">' + (rows.length ? rows.map((r) => {
+        const status = '<span class="pill ' + (r.paid ? 'paid' : 'open') + '">' + (r.paid ? 'bezahlt' : 'offen') + '</span>';
+        const row = '<span class="main"><b>' + esc(r.fine) + '</b><span class="sub">' + fmtDay(r.t) + ' · ' + eur(r.amount) + '</span></span>' + status;
+        if (!admin) return '<div class="item">' + row + '</div>';
+        return '<div class="swipe">' +
+          '<div class="swipe-actions"><button type="button" class="sa ' + (r.paid ? 'unpay' : 'pay') + '" data-a="togglePaid" data-id="' + esc(r.id) + '">' + (r.paid ? 'Offen' : 'Bezahlt') + '</button>' +
+          '<button type="button" class="sa del" data-a="delEntry" data-id="' + esc(r.id) + '">Löschen</button></div>' +
+          '<div class="item swipe-row">' + row + '</div></div>';
+      }).join('') : empty('Keine Strafen – vorbildlich!')) + '</div>') +
+      (admin && rows.length ? '<p class="sync">Eintrag nach links wischen: bezahlt markieren oder löschen.</p>' : '');
   }
 
   function viewAdd() {
-    if (!isAdmin()) return viewLogin();
+    if (!isAdmin()) return '<div class="card">' + loginForm() + '</div>';
     const A = S.add;
-    const head = '<div class="sheet-head">' + back('Abbrechen') + '<span class="h2">Strafe erfassen</span><span style="min-width:70px"></span></div>';
-    if (!S.data) return head + skeleton();
+    if (!S.data) return skeleton();
     const names = playerNames();
     const q = A.q.trim().toLowerCase();
     const shown = names.filter((n) => !q || n.toLowerCase().includes(q) || A.sel.has(n));
     const fines = S.data.fines.slice().sort((a, b) => a.name.localeCompare(b.name, 'de'));
-    return head +
-      '<section style="display:flex;flex-direction:column;gap:10px"><div class="sec-head"><span class="label">1 · Wer?</span><span class="delta">' + A.sel.size + ' ausgewählt</span></div>' +
-        (names.length > 12 ? '<label class="field"><span class="muted">' + I.search + '</span><input id="aq" type="search" data-in="aq" value="' + esc(A.q) + '" placeholder="Name filtern" aria-label="Name filtern" autocomplete="off"></label>' : '') +
+    return section('Wer? · ' + A.sel.size + ' ausgewählt',
+        (names.length > 12 ? '<label class="search">' + I.search + '<input id="aq" type="search" data-in="aq" value="' + esc(A.q) + '" placeholder="Name filtern" aria-label="Name filtern" autocomplete="off"></label>' : '') +
         (names.length ? '<div class="chips">' + shown.map((n) => '<button type="button" data-a="pick" data-arg="' + esc(n) + '" aria-pressed="' + A.sel.has(n) + '">' + esc(n) + '</button>').join('') + '</div>'
-          : empty('Noch keine Spieler – unter „Mehr → Kader“ anlegen')) + '</section>' +
-      '<section style="display:flex;flex-direction:column;gap:10px"><span class="label">2 · Was?</span>' +
-        (fines.length ? '<div class="tiles">' + fines.map((f) => '<button type="button" data-a="fine" data-arg="' + esc(f.name) + '" aria-pressed="' + (A.fine === f.name) + '"><span>' + esc(f.name) + '</span><b>' + eur(f.amount) + '</b></button>').join('') + '</div>'
-          : empty('Noch keine Strafen – unter „Mehr → Strafenkatalog“ anlegen')) + '</section>' +
-      '<section style="display:flex;flex-direction:column;gap:10px"><span class="label">3 · Wann?</span>' +
-        '<div class="pills">' + [['heute', 'Heute'], ['gestern', 'Gestern'], ['datum', 'Datum …']].map(([k, l]) =>
+          : empty('Noch keine Spieler – unter „Mehr → Kader“ anlegen'))) +
+      section('Was?', fines.length ? '<div class="tiles">' + fines.map((f) => '<button type="button" data-a="fine" data-arg="' + esc(f.name) + '" aria-pressed="' + (A.fine === f.name) + '"><span>' + esc(f.name) + '</span><b>' + eur(f.amount) + '</b></button>').join('') + '</div>'
+          : empty('Noch keine Strafen – unter „Mehr → Strafenkatalog“ anlegen')) +
+      section('Wann?', '<div class="seg" role="group" aria-label="Datum">' + [['heute', 'Heute'], ['gestern', 'Gestern'], ['datum', 'Datum …']].map(([k, l]) =>
           '<button type="button" data-a="day" data-v="' + k + '" aria-pressed="' + (A.day === k) + '">' + l + '</button>').join('') + '</div>' +
-        (A.day === 'datum' ? '<label class="field"><input id="adate" type="date" data-in="adate" value="' + esc(A.date || ymd(Date.now())) + '" max="' + ymd(Date.now()) + '" aria-label="Datum"></label>' : '') +
-      '</section>';
+        (A.day === 'datum' ? '<label class="field"><input id="adate" type="date" data-in="adate" value="' + esc(A.date || ymd(Date.now())) + '" max="' + ymd(Date.now()) + '" aria-label="Datum"></label>' : ''));
   }
-  function addBar() {
+  function addFoot() {
     const A = S.add, fine = S.data && S.data.fines.find((f) => f.name === A.fine);
     const total = A.sel.size * (fine ? fine.amount : 0);
     const ok = A.sel.size > 0 && !!fine && !S.busy;
     const label = !A.sel.size ? 'Spieler auswählen' : !fine ? 'Strafe auswählen' : 'Speichern · ' + eur(total);
-    return '<div class="actionbar"><div><div class="sum"><span>' + A.sel.size + ' × ' + esc(fine ? fine.name : '–') + '</span><b>' + eur(total) + '</b></div>' +
-      '<button type="button" class="btn primary" data-a="saveAdd"' + (ok ? '' : ' disabled') + '>' + label + '</button></div></div>';
+    return '<div class="sheet-foot"><div class="sum"><span>' + A.sel.size + ' × ' + esc(fine ? fine.name : '–') + '</span><b>' + eur(total) + '</b></div>' +
+      '<button type="button" class="btn primary" data-a="saveAdd"' + (ok ? '' : ' disabled') + '>' + label + '</button></div>';
   }
 
   function viewMore() {
     const d = S.data;
-    let h = '<h1 class="h1">Mehr</h1>';
+    let h = '';
     if (isAdmin()) {
-      h += '<span class="label">Verwaltung</span><div class="list">' +
-        moreItem('go', 'catalog', 'Strafenkatalog', d ? d.fines.length + ' Vergehen und Beträge' : 'Vergehen und Beträge') +
-        moreItem('go', 'squad', 'Kader', d ? playerNames().length + ' Spieler' : 'Spieler verwalten') +
-        moreItem('go', 'players', 'Zahlungen', 'Offene Beträge als bezahlt markieren') + '</div>';
+      h += section('Verwaltung', '<div class="list">' +
+        moreItem('go', 'catalog', 'Strafenkatalog', d ? d.fines.length + ' Vergehen und Beträge' : 'Vergehen und Beträge', I.list) +
+        moreItem('go', 'squad', 'Kader', d ? playerNames().length + ' Spieler' : 'Spieler verwalten', I.users) +
+        moreItem('go', 'players', 'Zahlungen', 'Offene Beträge abhaken', I.check2) + '</div>');
     } else {
-      h += '<span class="label">Admin-Zugang</span><div class="card">' + loginForm() + '</div>';
+      h += section('Admin-Zugang', '<div class="card">' + loginForm() + '</div>');
       if (S.oldScript) h += '<p class="note" style="color:var(--warn)">Hinweis: ' + esc(OLD_SCRIPT) + '. Erst dann funktioniert die Admin-Anmeldung.</p>';
     }
-    h += '<span class="label">Daten</span><div class="list">' +
-      moreItem('export', '', 'Export als CSV', 'Für Excel, mit allen Einträgen') +
-      moreItem('refresh', '', 'Jetzt aktualisieren', S.lastSync ? 'Zuletzt ' + new Date(S.lastSync).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Daten neu laden') + '</div>' +
-      '<span class="label">Konto</span><div class="list">' +
-      '<button type="button" class="item" data-a="logout"><span class="main"><b style="color:var(--danger)">' + (isAdmin() ? 'Abmelden' : 'Rolle wechseln') + '</b></span></button></div>' +
-      '<p class="sync">Tipp: Im Browser-Menü „Zum Home-Bildschirm“ wählen – dann startet die Strafenkasse wie eine App.</p>';
+    h += section('Daten', '<div class="list">' +
+      moreItem('export', '', 'Export als CSV', 'Für Excel, mit allen Einträgen', I.share) +
+      moreItem('refresh', '', 'Jetzt aktualisieren', S.lastSync ? 'Zuletzt ' + new Date(S.lastSync).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Daten neu laden', I.refresh) + '</div>') +
+      section('Konto', '<div class="list"><button type="button" class="item center" data-a="logout"><b style="color:var(--danger)">' + (isAdmin() ? 'Abmelden' : 'Rolle wechseln') + '</b></button></div>') +
+      '<p class="sync">Tipp: Im Teilen-Menü „Zum Home-Bildschirm“ wählen – dann startet die Strafenkasse wie eine App.</p>';
     return h;
   }
-  const moreItem = (a, s, title, sub) => '<button type="button" class="item" data-a="' + a + '"' + (s ? ' data-s="' + s + '"' : '') + '><span class="main"><b>' + esc(title) + '</b><span class="sub">' + esc(sub) + '</span></span><span class="muted">' + I.chev + '</span></button>';
+  const moreItem = (a, s, title, sub, icon) => '<button type="button" class="item" data-a="' + a + '"' + (s ? ' data-s="' + s + '"' : '') + '>' + (icon ? '<span class="icon-tile">' + icon + '</span>' : '') +
+    '<span class="main"><b>' + esc(title) + '</b><span class="sub">' + esc(sub) + '</span></span><span class="chev">' + I.chev + '</span></button>';
 
   function viewCatalog() {
     if (!isAdmin()) return viewMore();
     const fines = S.data ? S.data.fines.slice().sort((a, b) => a.name.localeCompare(b.name, 'de')) : [];
     const cur = fines.find((f) => f.name === S.editFine);
-    return '<div class="sheet-head">' + back() + '<span class="h2">Strafenkatalog</span><span style="min-width:70px"></span></div>' +
-      '<form class="card lg" data-form="fine"><b>' + (cur ? 'Strafe bearbeiten' : 'Neue Strafe') + '</b>' +
-        '<label class="field"><input id="fname" placeholder="Vergehen, z. B. Zu spät" aria-label="Vergehen" required value="' + esc(cur ? cur.name : '') + '"' + (cur ? ' readonly' : '') + '></label>' +
-        '<label class="field"><input id="famount" inputmode="decimal" placeholder="Betrag in €" aria-label="Betrag in Euro" required value="' + (cur ? String(cur.amount).replace('.', ',') : '') + '"><span class="muted">€</span></label>' +
-        '<div class="row">' + (cur ? '<button type="button" class="btn ghost sm" style="flex:1" data-a="editFine" data-arg="">Abbrechen</button>' : '') +
-        '<button type="submit" class="btn primary sm" style="flex:1"' + (S.busy ? ' disabled' : '') + '>Speichern</button></div></form>' +
-      '<div class="list">' + (fines.length ? fines.map((f) =>
-        '<div class="item"><button type="button" class="main" style="background:none;border:0;padding:0;text-align:left" data-a="editFine" data-arg="' + esc(f.name) + '"><b>' + esc(f.name) + '</b><span class="sub">' + eur(f.amount) + ' · zum Bearbeiten tippen</span></button>' +
-        '<button type="button" class="chip" style="padding:10px" data-a="delFine" data-arg="' + esc(f.name) + '" aria-label="' + esc(f.name) + ' löschen">' + I.x + '</button></div>').join('') : empty('Noch keine Strafen')) + '</div>';
+    return section(cur ? 'Strafe bearbeiten' : 'Neue Strafe',
+        '<form class="list form" data-form="fine">' +
+        '<label class="item"><span class="flabel">Vergehen</span><input id="fname" placeholder="z. B. Zu spät" required value="' + esc(cur ? cur.name : '') + '"' + (cur ? ' readonly' : '') + '></label>' +
+        '<label class="item"><span class="flabel">Betrag</span><input id="famount" inputmode="decimal" placeholder="0,00" required value="' + (cur ? String(cur.amount).replace('.', ',') : '') + '"><span class="muted">€</span></label>' +
+        '<div class="form-actions">' + (cur ? '<button type="button" class="btn ghost" data-a="editFine" data-arg="">Abbrechen</button>' : '') +
+        '<button type="submit" class="btn primary"' + (S.busy ? ' disabled' : '') + '>Speichern</button></div></form>') +
+      section('Katalog', '<div class="list">' + (fines.length ? fines.map((f) =>
+        '<div class="item"><button type="button" class="main plain" data-a="editFine" data-arg="' + esc(f.name) + '"><b>' + esc(f.name) + '</b><span class="sub">' + eur(f.amount) + '</span></button>' +
+        '<button type="button" class="icon-btn" data-a="delFine" data-arg="' + esc(f.name) + '" aria-label="' + esc(f.name) + ' löschen">' + I.trash + '</button></div>').join('') : empty('Noch keine Strafen')) + '</div>') +
+      '<p class="sync">Zum Bearbeiten auf eine Strafe tippen.</p>';
   }
 
   function viewSquad() {
     if (!isAdmin()) return viewMore();
     const names = S.data ? S.data.players.slice().sort((a, b) => a.localeCompare(b, 'de')) : [];
-    return '<div class="sheet-head">' + back() + '<span class="h2">Kader</span><span style="min-width:70px"></span></div>' +
-      '<form class="row" data-form="player"><label class="field"><input id="pname" placeholder="Neuer Spieler" aria-label="Name des Spielers" required autocomplete="off"></label>' +
-      '<button type="submit" class="btn primary sm"' + (S.busy ? ' disabled' : '') + '>Hinzufügen</button></form>' +
-      '<div class="list">' + (names.length ? names.map((n) =>
+    return section('Neuer Spieler', '<form class="list form" data-form="player"><label class="item"><input id="pname" placeholder="Vor- und Nachname" aria-label="Name des Spielers" required autocomplete="off">' +
+        '<button type="submit" class="link"' + (S.busy ? ' disabled' : '') + '>Hinzufügen</button></label></form>') +
+      section(names.length + ' Spieler', '<div class="list">' + (names.length ? names.map((n) =>
         '<div class="item"><span class="avatar">' + esc(initials(n)) + '</span><span class="main"><b>' + esc(n) + '</b></span>' +
-        '<button type="button" class="chip" style="padding:10px" data-a="delPlayer" data-arg="' + esc(n) + '" aria-label="' + esc(n) + ' entfernen">' + I.x + '</button></div>').join('') : empty('Noch keine Spieler')) + '</div>' +
+        '<button type="button" class="icon-btn" data-a="delPlayer" data-arg="' + esc(n) + '" aria-label="' + esc(n) + ' entfernen">' + I.trash + '</button></div>').join('') : empty('Noch keine Spieler')) + '</div>') +
       '<p class="sync">Bereits erfasste Strafen bleiben erhalten, wenn ein Spieler entfernt wird.</p>';
   }
 
-  function nav(screen) {
-    const b = (s, label, icon, cur) => '<button type="button" data-a="go" data-s="' + s + '"' + (cur ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>';
-    const top = { home: 'home', stats: 'stats', players: 'players', player: 'players', more: 'more', catalog: 'more', squad: 'more' }[screen];
-    return '<nav class="nav" aria-label="Hauptnavigation"><div>' +
-      b('home', 'Übersicht', I.home, top === 'home') + b('stats', 'Auswertung', I.stats, top === 'stats') +
-      '<button type="button" class="fab" data-a="add" aria-label="Strafe erfassen">' + I.plus + '</button>' +
-      b('players', 'Spieler', I.users, top === 'players') + b('more', 'Mehr', I.more, top === 'more') + '</div></nav>';
+  function tabbar(tab) {
+    const b = (s, label, icon) => '<button type="button" data-a="go" data-s="' + s + '"' + (tab === s ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>';
+    return '<nav class="tabbar" aria-label="Hauptnavigation"><div>' +
+      b('home', 'Übersicht', I.home) + b('stats', 'Auswertung', I.stats) +
+      '<button type="button" class="tab-add" data-a="add" aria-label="Strafe erfassen"><span>' + I.plus + '</span></button>' +
+      b('players', 'Spieler', I.users) + b('more', 'Mehr', I.more) + '</div></nav>';
+  }
+  function navbar(cfg, title) {
+    return '<header class="navbar' + (cfg.push ? ' always' : '') + '"><div class="nb-in">' +
+      (cfg.push ? '<button type="button" class="nb-back" data-a="back">' + I.back + '<span>' + esc(cfg.push) + '</span></button>' : '<span></span>') +
+      '<span class="nb-title">' + esc(title) + '</span><span></span></div></header>';
   }
 
   /* ===== Render ===== */
-  function render() {
-    const active = document.activeElement;
-    const focusId = active && active.id, caret = active && active.selectionStart;
-    if (!S.role) { $app.innerHTML = viewLogin(); restore(focusId, caret); return; }
-    const { screen, arg } = S.route;
-    let body, withNav = true;
-    switch (screen) {
+  function pageHtml(route) {
+    const cfg = SCREENS[route.screen];
+    let body;
+    switch (route.screen) {
       case 'stats': body = viewStats(); break;
       case 'players': body = viewPlayers(); break;
-      case 'player': body = viewPlayer(arg); break;
       case 'more': body = viewMore(); break;
       case 'catalog': body = viewCatalog(); break;
       case 'squad': body = viewSquad(); break;
-      case 'add': body = viewAdd(); withNav = !isAdmin(); break;
       default: body = viewHome();
     }
-    $app.innerHTML = '<main class="view' + (withNav ? '' : ' no-nav') + '">' + body + '</main>' + (withNav ? nav(screen) : (S.data ? addBar() : ''));
+    const large = cfg.push ? '' : '<div class="large-title"><h1>' + esc(cfg.title) + '</h1>' +
+      (route.screen === 'home' ? '<button type="button" class="nb-logo" data-a="go" data-s="more" aria-label="' + (isAdmin() ? 'Admin' : 'Spieler') + ' – Mehr"><img src="assets/logo-96.webp" width="36" height="36" alt=""></button>' : '') + '</div>';
+    return navbar(cfg, cfg.title) + '<main class="view' + (cfg.push ? ' pushed' : '') + '" data-key="' + route.screen + '">' + large + body + '</main>' + tabbar(cfg.tab);
+  }
+  function sheetHtml(route) {
+    const add = route.screen === 'add';
+    const title = add ? 'Strafe erfassen' : route.arg;
+    return '<div class="sheet-wrap"><div class="backdrop" data-a="closeSheet"></div>' +
+      '<section class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="grabber" aria-hidden="true"></div>' +
+      '<div class="sheet-nav"><button type="button" data-a="closeSheet">' + (add ? 'Abbrechen' : 'Fertig') + '</button><b>' + esc(add ? title : '') + '</b><span></span></div>' +
+      '<div class="sheet-body">' + (add ? viewAdd() : viewPlayer(route.arg)) + '</div>' +
+      (add && isAdmin() && S.data ? addFoot() : '') + '</section></div>';
+  }
+  let last = { page: '', sheet: '' };
+  function render() {
+    const active = document.activeElement;
+    const focusId = active && active.id, caret = active && active.selectionStart;
+    const sb = document.querySelector('.sheet-body'), sheetScroll = sb ? sb.scrollTop : 0;
+    if (!S.role) {
+      $app.innerHTML = viewLogin();
+      document.documentElement.classList.remove('lock');
+      last = { page: 'login', sheet: '' };
+      restore(focusId, caret);
+      return;
+    }
+    const sheet = isSheet(S.route.screen) ? S.route : null;
+    const base = sheet ? S.base : S.route;
+    const pageKey = base.screen, sheetKey = sheet ? sheet.screen + '/' + sheet.arg : '';
+    $app.innerHTML = pageHtml(base) + (sheet ? sheetHtml(sheet) : '');
+    document.documentElement.classList.toggle('lock', !!sheet);
+    // Übergänge nur, wenn sich die Seite wirklich ändert (nicht bei jedem Tippen)
+    if (pageKey !== last.page) {
+      const v = $app.querySelector('.view');
+      if (v && last.page && !reduceMotion()) v.classList.add(SCREENS[pageKey].push ? 'enter-push' : 'enter-fade');
+      if (!sheet) window.scrollTo(0, 0);
+    }
+    if (sheet) {
+      const wrap = $app.querySelector('.sheet-wrap');
+      if (sheetKey !== last.sheet) { if (!reduceMotion()) wrap.classList.add('enter'); }
+      else { const nb = $app.querySelector('.sheet-body'); if (nb) nb.scrollTop = sheetScroll; }
+    }
+    last = { page: pageKey, sheet: sheetKey };
+    onScroll();
     restore(focusId, caret);
   }
   function restore(id, caret) {
@@ -591,6 +652,86 @@
     el.focus({ preventScroll: true });
     try { if (caret != null) el.setSelectionRange(caret, caret); } catch (_) {}
   }
+  // Großer Titel wandert beim Scrollen in die Kopfleiste
+  let scrollRaf = 0;
+  function onScroll() {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      document.documentElement.classList.toggle('scrolled', window.scrollY > 36);
+    });
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+
+  /* ===== Gesten ===== */
+  (function gestures() {
+    let g = null;
+    const pt = (e) => (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+    document.addEventListener('touchstart', (e) => {
+      const p = pt(e); if (!p) return;
+      const t = e.target;
+      const sheet = t.closest && t.closest('.sheet');
+      const row = t.closest && t.closest('.swipe-row');
+      if (row) g = { kind: 'row', el: row, x: p.clientX, y: p.clientY, base: row.classList.contains('open') ? -SW : 0, axis: '' };
+      else if (sheet) {
+        const body = sheet.querySelector('.sheet-body');
+        const inBody = t.closest('.sheet-body');
+        if (!inBody || body.scrollTop <= 0) g = { kind: 'sheet', el: sheet, x: p.clientX, y: p.clientY, t: Date.now(), axis: '' };
+      } else if (standalone() && p.clientX < 22 && SCREENS[S.route.screen].push) g = { kind: 'edge', x: p.clientX, y: p.clientY, axis: '' };
+      else if (standalone() && window.scrollY <= 0 && S.role) g = { kind: 'ptr', x: p.clientX, y: p.clientY, axis: '' };
+      // offene Wisch-Zeilen schließen, wenn woanders getippt wird
+      document.querySelectorAll('.swipe-row.open').forEach((r) => { if (r !== row) { r.classList.remove('open'); r.style.transform = ''; } });
+    }, { passive: true });
+    const SW = 176;
+    document.addEventListener('touchmove', (e) => {
+      if (!g) return;
+      const p = pt(e), dx = p.clientX - g.x, dy = p.clientY - g.y;
+      if (!g.axis) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; }
+      if (g.kind === 'row' && g.axis === 'x') {
+        e.preventDefault();
+        g.dx = Math.max(-SW - 30, Math.min(0, g.base + dx));
+        g.el.style.transition = 'none'; g.el.style.transform = 'translateX(' + g.dx + 'px)';
+      } else if (g.kind === 'sheet' && g.axis === 'y' && dy > 0) {
+        e.preventDefault();
+        g.dy = dy;
+        g.el.style.transition = 'none'; g.el.style.transform = 'translateY(' + dy + 'px)';
+      } else if (g.kind === 'edge' && g.axis === 'x' && dx > 0) {
+        g.dx = dx;
+        const v = $app.querySelector('.view'); if (v) { v.style.transition = 'none'; v.style.transform = 'translateX(' + dx + 'px)'; }
+      } else if (g.kind === 'ptr' && g.axis === 'y' && dy > 0 && window.scrollY <= 0) {
+        g.dy = Math.min(dy * 0.5, 90);
+        const v = $app.querySelector('.view'); if (v) { v.style.transition = 'none'; v.style.transform = 'translateY(' + g.dy + 'px)'; }
+        ptr(g.dy);
+      } else if (g.axis && g.kind !== 'row') g = null;
+    }, { passive: false });
+    document.addEventListener('touchend', () => {
+      if (!g) return;
+      const k = g; g = null;
+      if (k.kind === 'row' && k.dx != null) {
+        k.el.style.transition = ''; const open = k.dx < -SW / 2;
+        k.el.classList.toggle('open', open); k.el.style.transform = open ? 'translateX(' + -SW + 'px)' : '';
+        if (open) haptic(6);
+      } else if (k.kind === 'sheet' && k.dy != null) {
+        const fast = k.dy / Math.max(1, Date.now() - k.t) > 0.6;
+        k.el.style.transition = '';
+        if (k.dy > 120 || (fast && k.dy > 40)) { k.el.style.transform = 'translateY(100%)'; const w = k.el.parentNode; if (w) w.classList.add('leaving'); setTimeout(() => { S.sheetPushed ? history.back() : go(S.base.screen, S.base.arg, true); }, 220); }
+        else k.el.style.transform = '';
+      } else if (k.kind === 'edge' && k.dx != null) {
+        const v = $app.querySelector('.view'); if (v) { v.style.transition = ''; v.style.transform = ''; }
+        if (k.dx > 90) history.back();
+      } else if (k.kind === 'ptr' && k.dy != null) {
+        const v = $app.querySelector('.view'); if (v) { v.style.transition = ''; v.style.transform = ''; }
+        ptr(0);
+        if (k.dy > 64) { haptic(10); refresh(); }
+      }
+    });
+    let ptrEl = null;
+    function ptr(d) {
+      if (!ptrEl) { ptrEl = document.createElement('div'); ptrEl.className = 'ptr'; ptrEl.innerHTML = I.refresh; document.body.appendChild(ptrEl); }
+      ptrEl.style.opacity = d ? Math.min(1, d / 64) : 0;
+      ptrEl.style.transform = 'translateX(-50%) rotate(' + d * 4 + 'deg)';
+    }
+  })();
 
   /* ===== Aktionen ===== */
   async function run(fn, okMsg) {
@@ -631,7 +772,8 @@
     const before = S.data.rows;
     S.data.rows = temp.concat(before).sort((a, b) => b.t - a.t);
     S.add = { sel: new Set(), fine: A.fine, day: 'heute', date: '', q: '' };
-    go('home', '', true);
+    haptic(15);
+    closeSheet();
     run(async () => {
       try { await apiPost('add_entries', { entries }); }
       catch (e) { S.data.rows = before; throw e; }
@@ -640,7 +782,8 @@
 
   const actions = {
     go: (el) => go(el.dataset.s, el.dataset.arg || ''),
-    back: () => (history.length > 1 ? history.back() : go('home')),
+    back: () => (history.length > 1 ? history.back() : go('more')),
+    closeSheet,
     add: () => {
       if (!isAdmin()) { toast('Nur Admins können Strafen erfassen'); go('more'); return; }
       go('add');
@@ -651,11 +794,11 @@
     export: exportCsv,
     range: (el) => { S.range = el.dataset.v; render(); },
     pfilter: (el) => { S.pfilter = el.dataset.v; render(); },
-    pick: (el) => { const n = el.dataset.arg; S.add.sel.has(n) ? S.add.sel.delete(n) : S.add.sel.add(n); render(); },
+    pick: (el) => { const n = el.dataset.arg; haptic(5); S.add.sel.has(n) ? S.add.sel.delete(n) : S.add.sel.add(n); render(); },
     fine: (el) => { S.add.fine = el.dataset.arg; render(); },
     day: (el) => { S.add.day = el.dataset.v; render(); },
     saveAdd,
-    pin: (el) => { if (S.busy || S.pin.length >= 4) return; S.pin += el.dataset.v; render(); if (S.pin.length === 4) forms.login(); },
+    pin: (el) => { if (S.busy || S.pin.length >= 4) return; haptic(5); S.pin += el.dataset.v; render(); if (S.pin.length === 4) forms.login(); },
     pinDel: () => { S.pin = S.pin.slice(0, -1); render(); },
     togglePaid: (el) => {
       const r = S.data.rows.find((x) => x.id === el.dataset.id);
@@ -697,7 +840,7 @@
       S.pwd = pwd;
       run(async () => {
         try { await apiPost('check_admin'); }
-        catch (e) { S.pwd = prev; S.pin = ''; S.pinErr = true; setTimeout(() => { S.pinErr = false; render(); }, 600); throw e; }
+        catch (e) { S.pwd = prev; S.pin = ''; S.pinErr = true; haptic([30, 40, 30]); setTimeout(() => { S.pinErr = false; render(); }, 600); throw e; }
         S.pin = '';
         S.role = 'admin';
         store.set(LS.role, 'admin'); store.set(LS.pwd, pwd);
@@ -751,6 +894,7 @@
   /* ===== Start ===== */
   try { const c = store.get(LS.cache); if (c) S.data = normalize(JSON.parse(c)); } catch (_) {}
   S.route = parseHash();
+  S.base = isSheet(S.route.screen) ? { screen: S.route.screen === 'player' ? 'players' : 'home', arg: '' } : S.route;
   render();
   if (S.role) refresh(!!S.data);
 })();
